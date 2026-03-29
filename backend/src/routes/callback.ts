@@ -12,6 +12,21 @@ const router = Router();
 
 const IM_OK = { ActionStatus: 'OK', ErrorCode: 0, ErrorInfo: '' };
 
+// Dedup: IM server may retry callbacks. Track processed MsgKey to avoid duplicate LLM calls.
+const processedMsgs = new Set<string>();
+const MAX_DEDUP_SIZE = 500;
+
+function markProcessed(key: string): boolean {
+  if (processedMsgs.has(key)) return false; // already processed
+  processedMsgs.add(key);
+  // Evict oldest entries to prevent unbounded growth
+  if (processedMsgs.size > MAX_DEDUP_SIZE) {
+    const first = processedMsgs.values().next().value;
+    if (first) processedMsgs.delete(first);
+  }
+  return true; // first time seeing this
+}
+
 function log(msg: string): void {
   console.log(msg);
   // Also write to /tmp for local debugging (safe on Vercel too)
@@ -59,13 +74,20 @@ router.post('/api/im/callback', async (req: Request, res: Response) => {
     return;
   }
 
-  res.json(IM_OK);
+  // Dedup: skip if this callback was already processed (IM server retry)
+  const msgKey = req.body.MsgKey || req.body.MsgSeq || `${From_Account}_${Date.now()}`;
+  if (!markProcessed(String(msgKey))) {
+    log(`[Dedup] Skipping duplicate callback MsgKey=${msgKey}`);
+    res.json(IM_OK);
+    return;
+  }
 
+  // IMPORTANT: On Vercel serverless, the function freezes after res is sent.
+  // Must complete ALL async work (LLM call, bot reply, card detection) BEFORE responding.
   try {
     const modelId = getUserModel(From_Account);
     const agentId = getUserAgent(From_Account);
-    const logLine = `[${new Date().toISOString()}] From: ${From_Account}, Agent: ${agentId}, Model: ${modelId}, Msg: ${userMessage}\n`;
-    log(logLine);
+    log(`[${new Date().toISOString()}] From: ${From_Account}, Agent: ${agentId}, Model: ${modelId}, Msg: ${userMessage}`);
 
     // Track message in agent-specific tracker
     if (agentId === 'medical') {
@@ -137,6 +159,8 @@ router.post('/api/im/callback', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error processing IM callback:', error);
   }
+
+  res.json(IM_OK);
 });
 
 export default router;
