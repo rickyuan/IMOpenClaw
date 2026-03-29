@@ -1,0 +1,89 @@
+{
+  "brand": {
+    "name": "QuickCafé",
+    "tagline": "Your AI Barista ☕",
+    "currency": "SGD"
+  },
+
+  "menu": [
+    {
+      "id": "latte",
+      "name": "Latte",
+      "description": "Smooth espresso with steamed milk",
+      "prices": { "Regular": 5.50, "Large": 6.50 },
+      "options": {
+        "milk": ["Whole Milk", "Oat Milk (+$0.80)", "Soy Milk (+$0.50)"],
+        "sweetness": ["Normal", "Less Sugar", "No Sugar"],
+        "temperature": ["Hot", "Iced"]
+      },
+      "popular": true,
+      "image_url": "https://demo.quickcafe.sg/img/latte.jpg"
+    },
+    {
+      "id": "americano",
+      "name": "Americano",
+      "description": "Bold double-shot espresso with hot water",
+      "prices": { "Regular": 4.50, "Large": 5.50 },
+      "options": {
+        "sweetness": ["Normal", "Less Sugar", "No Sugar"],
+        "temperature": ["Hot", "Iced"]
+      },
+      "popular": true,
+      "image_url": "https://demo.quickcafe.sg/img/americano.jpg"
+    },
+    {
+      "id": "cappuccino",
+      "name": "Cappuccino",
+      "description": "Rich espresso topped with thick, creamy foam",
+      "prices": { "Regular": 5.50, "Large": 6.50 },
+      "options": {
+        "milk": ["Whole Milk", "Oat Milk (+$0.80)"],
+        "sweetness": ["Normal", "Less Sugar", "No Sugar"],
+        "temperature": ["Hot"]
+      },
+      "popular": false,
+      "image_url": "https://demo.quickcafe.sg/img/cappuccino.jpg"
+    },
+    {
+      "id": "mocha",
+      "name": "Mocha",
+      "description": "Espresso meets rich chocolate and steamed milk",
+      "prices": { "Regular": 6.50, "Large": 7.50 },
+      "options": {
+        "milk": ["Whole Milk", "Oat Milk (+$0.80)"],
+        "sweetness": ["Normal", "Less Sugar"],
+        "temperature": ["Hot", "Iced"]
+      },
+      "popular": false,
+      "image_url": "https://demo.quickcafe.sg/img/mocha.jpg"
+    },
+    {
+      "id": "matcha_latte",
+      "name": "Matcha Latte",
+      "description": "Premium Uji matcha with creamy milk",
+      "prices": { "Regular": 6.00, "Large": 7.00 },
+      "options": {
+        "milk": ["Whole Milk", "Oat Milk (+$0.80)", "Soy Milk (+$0.50)"],
+        "sweetness": ["Normal", "Less Sugar", "No Sugar"],
+        "temperature": ["Hot", "Iced"]
+      },
+      "popular": true,
+      "image_url": "https://demo.quickcafe.sg/img/matcha.jpg"
+    }
+  ],
+
+  "delivery": {
+    "estimated_time": "10-15 min",
+    "fee": 1.50,
+    "free_above": 12.00,
+    "pickup_available": true
+  },
+
+  "payment_methods": ["Visa/Mastercard", "GrabPay", "PayNow", "Apple Pay"],
+
+  "promo": {
+    "code": "DEVDAY",
+    "description": "Free upsize to Large",
+    "auto_apply": true
+  }
+}

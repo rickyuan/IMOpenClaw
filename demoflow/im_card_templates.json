@@ -1,0 +1,107 @@
+{
+  "im_cards": {
+
+    "menu_card": {
+      "description": "Step 1 — 展示咖啡菜单",
+      "payload": {
+        "card_type": "menu",
+        "title": "☕ QuickCafé Menu",
+        "items": [
+          {
+            "id": "latte",
+            "name": "Latte",
+            "desc": "Espresso + steamed milk",
+            "price": "from $5.50",
+            "image": "latte.jpg",
+            "tag": "🔥 Popular"
+          },
+          {
+            "id": "americano",
+            "name": "Americano",
+            "desc": "Double-shot espresso + water",
+            "price": "from $4.50",
+            "image": "americano.jpg",
+            "tag": "🔥 Popular"
+          },
+          {
+            "id": "cappuccino",
+            "name": "Cappuccino",
+            "desc": "Espresso + thick foam",
+            "price": "from $5.50",
+            "image": "cappuccino.jpg",
+            "tag": null
+          },
+          {
+            "id": "mocha",
+            "name": "Mocha",
+            "desc": "Espresso + chocolate + milk",
+            "price": "from $6.50",
+            "image": "mocha.jpg",
+            "tag": null
+          },
+          {
+            "id": "matcha_latte",
+            "name": "Matcha Latte",
+            "desc": "Uji matcha + creamy milk",
+            "price": "from $6.00",
+            "image": "matcha.jpg",
+            "tag": "🔥 Popular"
+          }
+        ]
+      }
+    },
+
+    "order_card": {
+      "description": "Step 4 — 订单摘要确认",
+      "payload_example": {
+        "card_type": "order_summary",
+        "title": "📋 Your Order",
+        "items": [
+          {
+            "name": "Latte",
+            "size": "Large",
+            "temperature": "Iced",
+            "milk": "Oat Milk",
+            "sweetness": "Less Sugar",
+            "price": 7.30
+          }
+        ],
+        "subtotal": 7.30,
+        "delivery_fee": 1.50,
+        "promo": {
+          "code": "DEVDAY",
+          "description": "Free upsize to Large",
+          "discount": -1.00
+        },
+        "total": 7.80,
+        "payment": "GrabPay",
+        "actions": [
+          {"label": "✅ Confirm Order", "action": "confirm"},
+          {"label": "✏️ Modify", "action": "modify"}
+        ]
+      }
+    },
+
+    "confirmation_card": {
+      "description": "Step 5 — 下单成功确认",
+      "payload_example": {
+        "card_type": "order_confirmed",
+        "title": "✅ Order Confirmed!",
+        "order_number": "QC-20260326-001",
+        "items_summary": "Large Iced Latte (Oat Milk, Less Sugar)",
+        "total": "$7.80",
+        "eta": "10-15 min",
+        "delivery_to": "Developer Conference, Level 3",
+        "status_steps": [
+          {"label": "Order Received", "done": true},
+          {"label": "Preparing ☕", "active": true},
+          {"label": "On the way", "done": false},
+          {"label": "Delivered", "done": false}
+        ],
+        "actions": [
+          {"label": "📍 Track Order", "action": "track"}
+        ]
+      }
+    }
+  }
+}
