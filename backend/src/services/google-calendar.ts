@@ -1,12 +1,13 @@
-import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
+const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
 // Per-user OAuth2 tokens (in-memory for demo)
 const userTokens = new Map<string, any>();
 
 function getOAuth2Client() {
-  return new google.auth.OAuth2(
+  return new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback',
@@ -18,18 +19,18 @@ export function isGoogleCalendarConfigured(): boolean {
 }
 
 export function getGoogleAuthUrl(userId: string): string {
-  const oauth2Client = getOAuth2Client();
-  return oauth2Client.generateAuthUrl({
+  const client = getOAuth2Client();
+  return client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: SCOPES,
-    state: userId, // pass userId through OAuth flow
+    state: userId,
   });
 }
 
 export async function handleGoogleCallback(code: string, userId: string): Promise<void> {
-  const oauth2Client = getOAuth2Client();
-  const { tokens } = await oauth2Client.getToken(code);
+  const client = getOAuth2Client();
+  const { tokens } = await client.getToken(code);
   userTokens.set(userId, tokens);
   console.log(`[GoogleCal] Stored OAuth tokens for user ${userId}`);
 }
@@ -53,10 +54,6 @@ export interface CalendarEventInput {
   confirmationNo: string;
 }
 
-/**
- * Parse loose date/time strings from AI conversation into a Date.
- * Mirrors the frontend calendar.ts logic.
- */
 function parseAppointmentDateTime(dateStr: string, timeStr: string): Date {
   const now = new Date();
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -103,23 +100,29 @@ function parseAppointmentDateTime(dateStr: string, timeStr: string): Date {
   return date;
 }
 
-export async function createCalendarEvent(userId: string, appt: CalendarEventInput): Promise<string | null> {
+/** Get a valid access token, refreshing if needed */
+async function getAccessToken(userId: string): Promise<string> {
   const tokens = userTokens.get(userId);
-  if (!tokens) return null;
+  if (!tokens) throw new Error('Not connected');
 
-  const oauth2Client = getOAuth2Client();
-  oauth2Client.setCredentials(tokens);
+  const client = getOAuth2Client();
+  client.setCredentials(tokens);
 
-  // Refresh token if needed
-  oauth2Client.on('tokens', (newTokens) => {
-    const existing = userTokens.get(userId);
-    userTokens.set(userId, { ...existing, ...newTokens });
-  });
+  // Check if token needs refresh
+  if (tokens.expiry_date && Date.now() >= tokens.expiry_date - 60000) {
+    const { credentials } = await client.refreshAccessToken();
+    userTokens.set(userId, credentials);
+    return credentials.access_token!;
+  }
 
-  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+  return tokens.access_token;
+}
+
+export async function createCalendarEvent(userId: string, appt: CalendarEventInput): Promise<string | null> {
+  const accessToken = await getAccessToken(userId);
 
   const startDate = parseAppointmentDateTime(appt.date, appt.time);
-  const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 min
+  const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
 
   const location = appt.consultType.includes('House Call')
     ? 'Home Visit'
@@ -127,38 +130,44 @@ export async function createCalendarEvent(userId: string, appt: CalendarEventInp
       ? 'Doctor Anywhere Clinic'
       : 'Video Teleconsult (Doctor Anywhere App)';
 
-  const event = await calendar.events.insert({
-    calendarId: 'primary',
-    requestBody: {
-      summary: `Doctor Anywhere - ${appt.consultType} with ${appt.doctor}`,
-      description: [
-        `Booking Ref: ${appt.confirmationNo}`,
-        `Doctor: ${appt.doctor} (${appt.specialty})`,
-        `Patient: ${appt.patientName}`,
-        `Type: ${appt.consultType}`,
-        `Fee: $${Number(appt.fee).toFixed(2)}`,
-        '',
-        'Medication can be delivered within 3 hours after consultation.',
-      ].join('\n'),
-      location,
-      start: {
-        dateTime: startDate.toISOString(),
-        timeZone: 'Asia/Singapore',
-      },
-      end: {
-        dateTime: endDate.toISOString(),
-        timeZone: 'Asia/Singapore',
-      },
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'popup', minutes: 60 },
-          { method: 'email', minutes: 120 },
-        ],
-      },
+  const eventBody = {
+    summary: `Doctor Anywhere - ${appt.consultType} with ${appt.doctor}`,
+    description: [
+      `Booking Ref: ${appt.confirmationNo}`,
+      `Doctor: ${appt.doctor} (${appt.specialty})`,
+      `Patient: ${appt.patientName}`,
+      `Type: ${appt.consultType}`,
+      `Fee: $${Number(appt.fee).toFixed(2)}`,
+      '',
+      'Medication can be delivered within 3 hours after consultation.',
+    ].join('\n'),
+    location,
+    start: { dateTime: startDate.toISOString(), timeZone: 'Asia/Singapore' },
+    end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Singapore' },
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: 60 },
+        { method: 'email', minutes: 120 },
+      ],
     },
+  };
+
+  const res = await fetch(`${CALENDAR_API}/calendars/primary/events`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(eventBody),
   });
 
-  console.log(`[GoogleCal] Created event ${event.data.id} for user ${userId}`);
-  return event.data.htmlLink || null;
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Calendar API error: ${res.status} ${err}`);
+  }
+
+  const data: any = await res.json();
+  console.log(`[GoogleCal] Created event ${data.id} for user ${userId}`);
+  return data.htmlLink || null;
 }

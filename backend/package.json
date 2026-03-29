@@ -11,8 +11,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "googleapis": "^171.4.0",
-    "tencentcloud-sdk-nodejs-intl-en": "^3.0.1329",
+    "google-auth-library": "^10.6.2",
     "tencentcloud-sdk-nodejs-trtc": "^4.1.193",
     "tls-sig-api-v2": "^1.0.2"
   },

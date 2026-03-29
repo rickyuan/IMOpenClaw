@@ -1,8 +1,3 @@
-declare module 'tencentcloud-sdk-nodejs-intl-en' {
-  const sdk: any;
-  export = sdk;
-}
-
 declare module 'tls-sig-api-v2' {
   namespace TLSSigAPIv2 {
     class Api {
