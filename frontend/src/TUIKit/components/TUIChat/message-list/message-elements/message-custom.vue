@@ -271,6 +271,85 @@
         </div>
       </div>
     </template>
+    <!-- ─── Changi Airport IM Cards ─────────────────────────── -->
+    <template v-else-if="customData.type === 'flight_status_card'">
+      <div class="airport-card flight-card">
+        <div class="airport-header flight-header">
+          <div class="airport-flight-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+            {{ customData.flightNo }}
+          </div>
+          <span :class="['airport-status', customData.status === 'On Time' ? 'ontime' : customData.status === 'Boarding' ? 'boarding' : customData.status === 'Delayed' ? 'delayed' : 'ontime']">{{ customData.status }}</span>
+        </div>
+        <div class="airport-airline">{{ customData.airline }}</div>
+        <div class="airport-route">
+          <div class="airport-route-point"><span class="airport-code">{{ customData.origin?.match(/\((\w+)\)/)?.[1] || 'SIN' }}</span><span class="airport-city">{{ customData.origin?.replace(/\s*\(\w+\)/, '') }}</span></div>
+          <div class="airport-arrow">✈</div>
+          <div class="airport-route-point"><span class="airport-code">{{ customData.destination?.match(/\((\w+)\)/)?.[1] || '---' }}</span><span class="airport-city">{{ customData.destination?.replace(/\s*\(\w+\)/, '') }}</span></div>
+        </div>
+        <div class="airport-chips">
+          <span class="airport-chip">🏢 {{ customData.terminal }}</span>
+          <span class="airport-chip">🚪 Gate {{ customData.gate }}</span>
+          <span class="airport-chip time-chip">🕐 Dep {{ customData.departure }}</span>
+        </div>
+      </div>
+    </template>
+
+    <template v-else-if="customData.type === 'transport_card'">
+      <div class="airport-card transport-card-im">
+        <div class="airport-header transport-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10z"/></svg>
+          <div><div class="airport-header-title">Transport Options</div><div class="airport-header-sub">To City Centre</div></div>
+        </div>
+        <div class="transport-options-im">
+          <div v-for="opt in (customData.options || [])" :key="opt.mode" class="transport-row">
+            <span class="transport-row-mode">{{ opt.mode }}</span>
+            <span class="transport-row-label">{{ opt.label }}</span>
+            <span class="transport-row-time">{{ opt.duration }}</span>
+            <span class="transport-row-price">{{ opt.price }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template v-else-if="customData.type === 'jewel_card'">
+      <div class="airport-card jewel-card-im">
+        <div class="airport-header jewel-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          <div><div class="airport-header-title">Jewel Changi</div><div class="airport-header-sub">{{ customData.location }}</div></div>
+        </div>
+        <div class="jewel-highlights-im">
+          <div v-for="h in (customData.highlights || [])" :key="h.name" class="jewel-row">
+            <div class="jewel-row-info">
+              <div class="jewel-row-name">{{ h.name }}</div>
+              <div class="jewel-row-desc">{{ h.desc }}</div>
+            </div>
+            <span class="jewel-tag">{{ h.tag }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template v-else-if="customData.type === 'dining_card'">
+      <div class="airport-card dining-card-im">
+        <div class="airport-header dining-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+          <div><div class="airport-header-title">Dining Near You</div><div class="airport-header-sub">{{ customData.terminal }} · Top picks</div></div>
+        </div>
+        <div class="dining-list-im">
+          <div v-for="r in (customData.restaurants || [])" :key="r.name" class="dining-row">
+            <div class="dining-avatar">{{ r.name.charAt(0) }}</div>
+            <div class="dining-info">
+              <div class="dining-name">{{ r.name }}</div>
+              <div class="dining-cuisine">{{ r.cuisine }}</div>
+              <div class="dining-location">{{ r.location }}</div>
+            </div>
+            <div class="dining-price">{{ r.priceRange }}</div>
+          </div>
+        </div>
+      </div>
+    </template>
+
     <template v-else>
       <span v-html="content.custom" />
     </template>
@@ -1079,6 +1158,119 @@ a {
 
   @keyframes apptSpin {
     to { transform: rotate(360deg); }
+  }
+
+  /* ─── Changi Airport Cards ──────────────────────────────────── */
+  .airport-card {
+    width: 290px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(107,33,168,0.12);
+    box-shadow: 0 2px 10px rgba(107,33,168,0.08);
+    background: #fff;
+    animation: cafeCardIn 0.35s ease-out;
+  }
+
+  .airport-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 13px;
+  }
+  .flight-header  { background: linear-gradient(135deg, #6B21A8, #7C3AED); }
+  .transport-header { background: linear-gradient(135deg, #0369A1, #0EA5E9); }
+  .jewel-header   { background: linear-gradient(135deg, #4C1D95, #7C3AED, #0EA5E9); }
+  .dining-header  { background: linear-gradient(135deg, #9A3412, #EA580C); }
+
+  .airport-header-title { font-size: 13px; font-weight: 700; color: #fff; }
+  .airport-header-sub   { font-size: 10px; color: rgba(255,255,255,0.75); margin-top: 1px; }
+
+  /* Flight card */
+  .airport-flight-badge {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 15px; font-weight: 700; color: #fff;
+  }
+  .airport-airline { font-size: 11px; color: rgba(255,255,255,0.8); padding: 2px 12px 6px; background: linear-gradient(135deg, #6B21A8, #7C3AED); }
+  .airport-status {
+    font-size: 10px; font-weight: 600; padding: 2px 8px;
+    border-radius: 8px; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .airport-status.ontime   { background: rgba(255,255,255,0.25); color: #fff; }
+  .airport-status.boarding { background: #FFF3CD; color: #856404; }
+  .airport-status.delayed  { background: #F8D7DA; color: #721C24; }
+
+  .airport-route {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px 6px; gap: 6px;
+  }
+  .airport-route-point { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .airport-code { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+  .airport-city { font-size: 9px; color: #999; text-align: center; max-width: 60px; }
+  .airport-arrow { font-size: 16px; color: #7C3AED; }
+
+  .airport-chips {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 4px 12px 10px;
+  }
+  .airport-chip {
+    font-size: 10px; font-weight: 500; color: #555;
+    background: #F3F0FF; border: 1px solid rgba(107,33,168,0.12);
+    padding: 3px 7px; border-radius: 5px;
+  }
+  .airport-chip.time-chip { background: #FFF3E0; border-color: rgba(255,152,0,0.2); color: #E65100; }
+
+  /* Transport card */
+  .transport-options-im { padding: 6px 0; }
+  .transport-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-bottom: 1px solid rgba(14,165,233,0.07);
+    font-size: 11px;
+  }
+  .transport-row:last-child { border-bottom: none; }
+  .transport-row-mode  { font-weight: 700; color: #0369A1; min-width: 40px; font-size: 10px; background: #E8F5FF; padding: 2px 5px; border-radius: 4px; text-align: center; }
+  .transport-row-label { flex: 1; color: #333; font-size: 11px; }
+  .transport-row-time  { color: #555; font-weight: 500; font-size: 10px; }
+  .transport-row-price { color: #0369A1; font-weight: 600; font-size: 10px; min-width: 55px; text-align: right; }
+
+  /* Jewel card */
+  .jewel-highlights-im { padding: 6px 0; }
+  .jewel-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid rgba(107,33,168,0.07);
+  }
+  .jewel-row:last-child { border-bottom: none; }
+  .jewel-row-info { flex: 1; min-width: 0; }
+  .jewel-row-name  { font-size: 12px; font-weight: 600; color: #1a1a2e; }
+  .jewel-row-desc  { font-size: 10px; color: #888; margin-top: 2px; line-height: 1.3; }
+  .jewel-tag { font-size: 9px; font-weight: 500; color: #7C3AED; background: #F3E8FF; border: 1px solid rgba(124,58,237,0.15); padding: 2px 6px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
+
+  /* Dining card */
+  .dining-list-im { padding: 4px 0; }
+  .dining-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid rgba(194,65,12,0.07);
+  }
+  .dining-row:last-child { border-bottom: none; }
+  .dining-avatar {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #FFF7ED, #FFEDD5);
+    border: 1px solid rgba(194,65,12,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #EA580C; flex-shrink: 0;
+  }
+  .dining-info { flex: 1; min-width: 0; }
+  .dining-name     { font-size: 12px; font-weight: 600; color: #1a1a2e; }
+  .dining-cuisine  { font-size: 10px; color: #888; margin-top: 1px; }
+  .dining-location { font-size: 10px; color: #EA580C; margin-top: 2px; }
+  .dining-price    { font-size: 10px; font-weight: 600; color: #333; text-align: right; flex-shrink: 0; }
+
+  /* Mobile H5 */
+  @media (max-width: 640px) {
+    .cafe-card { width: 240px; }
+    .medi-card { width: 250px; }
+    .airport-card { width: 255px; }
   }
 }
 </style>

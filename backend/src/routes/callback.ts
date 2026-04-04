@@ -6,6 +6,11 @@ import {
   trackMedicalMessage, detectMedicalCardTrigger,
   getServiceMenuData, getDoctorListData, extractAppointmentDetails,
 } from '../services/medical-detection';
+import {
+  trackAirportMessage, detectAirportCardTrigger,
+  extractFlightData, extractDiningTerminal,
+  TRANSPORT_DATA, JEWEL_DATA,
+} from '../services/airport-detection';
 import { isUserConnected, createCalendarEvent } from '../services/google-calendar';
 
 const router = Router();
@@ -92,6 +97,8 @@ router.post('/api/im/callback', async (req: Request, res: Response) => {
     // Track message in agent-specific tracker
     if (agentId === 'medical') {
       trackMedicalMessage(From_Account, 'user', userMessage);
+    } else if (agentId === 'airport') {
+      trackAirportMessage(From_Account, 'user', userMessage);
     } else {
       trackMessage(From_Account, 'user', userMessage);
     }
@@ -103,6 +110,8 @@ router.post('/api/im/callback', async (req: Request, res: Response) => {
     // Track AI reply
     if (agentId === 'medical') {
       trackMedicalMessage(From_Account, 'assistant', rawReply);
+    } else if (agentId === 'airport') {
+      trackAirportMessage(From_Account, 'assistant', rawReply);
     } else {
       trackMessage(From_Account, 'assistant', rawReply);
     }
@@ -110,7 +119,24 @@ router.post('/api/im/callback', async (req: Request, res: Response) => {
     await sendBotMessage(From_Account, displayReply);
 
     // Agent-specific card detection
-    if (agentId === 'medical') {
+    if (agentId === 'airport') {
+      const cardType = detectAirportCardTrigger(From_Account, rawReply);
+      if (cardType) {
+        await new Promise(r => setTimeout(r, 500));
+        if (cardType === 'flight_status_card') {
+          const flight = extractFlightData(From_Account);
+          await sendBotCustomMessage(From_Account, 'flight_status_card', flight, `Flight ${flight.flightNo}`);
+        } else if (cardType === 'transport_card') {
+          await sendBotCustomMessage(From_Account, 'transport_card', TRANSPORT_DATA, 'Transport Options');
+        } else if (cardType === 'jewel_card') {
+          await sendBotCustomMessage(From_Account, 'jewel_card', JEWEL_DATA, 'Jewel Changi');
+        } else if (cardType === 'dining_card') {
+          const dining = extractDiningTerminal(From_Account);
+          await sendBotCustomMessage(From_Account, 'dining_card', dining, 'Dining Recommendations');
+        }
+        log(`  -> Card: ${cardType}`);
+      }
+    } else if (agentId === 'medical') {
       const cardType = detectMedicalCardTrigger(From_Account, displayReply);
       if (cardType) {
         await new Promise(r => setTimeout(r, 500));

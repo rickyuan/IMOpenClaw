@@ -15,13 +15,23 @@
         </defs>
       </svg>
       <!-- Medical icon for medical -->
-      <svg v-else class="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg v-else-if="activeAgentId === 'medical'" class="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect width="32" height="32" rx="8" fill="url(#grad-medical)"/>
         <rect x="14" y="8" width="4" height="16" rx="1" fill="#fff" opacity="0.9"/>
         <rect x="8" y="14" width="16" height="4" rx="1" fill="#fff" opacity="0.9"/>
         <defs>
           <linearGradient id="grad-medical" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
             <stop stop-color="#2E86DE"/><stop offset="1" stop-color="#1B5E9E"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <!-- Airport icon for Changi -->
+      <svg v-else class="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="url(#grad-airport)"/>
+        <path d="M22 17v-2l-8-5V5.5c0-.83-.67-1.5-1.5-1.5S11 4.67 11 5.5V10l-8 5v2l8-2.5V20l-2 1.5V23l3.5-1 3.5 1v-1.5L14 20v-5.5l8 2.5z" fill="#fff" opacity="0.95"/>
+        <defs>
+          <linearGradient id="grad-airport" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#6B21A8"/><stop offset="1" stop-color="#0EA5E9"/>
           </linearGradient>
         </defs>
       </svg>
@@ -65,7 +75,13 @@
             :class="['agent-tab', activeAgentId === a.id && 'active', a.id]"
             @click="onAgentChange(a.id)"
           >
-            <span class="agent-icon">{{ a.id === 'barista' ? '&#9749;' : '&#9764;' }}</span>
+            <span class="agent-icon">
+              <span v-if="a.id === 'barista'">&#9749;</span>
+              <span v-else-if="a.id === 'medical'">&#9764;</span>
+              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+              </svg>
+            </span>
             {{ a.name }}
           </button>
         </div>
@@ -297,6 +313,11 @@ onMounted(() => {
   color: #fff;
 }
 
+.agent-tab.active.airport {
+  background: linear-gradient(135deg, #6B21A8, #0EA5E9);
+  color: #fff;
+}
+
 .agent-icon {
   font-size: 14px;
 }
@@ -379,5 +400,64 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Mobile H5 */
+@media (max-width: 640px) {
+  .topnav {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .brand {
+    order: 1;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  .mode-tabs {
+    order: 2;
+  }
+
+  .tab {
+    padding: 5px 12px;
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .controls {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+
+  .agent-tab {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .model-selector {
+    gap: 4px;
+  }
+
+  .model-label {
+    display: none;
+  }
+
+  .select-wrap select {
+    font-size: 12px;
+    padding: 4px 24px 4px 8px;
+  }
+
+  .user-badge .username {
+    display: none;
+  }
 }
 </style>

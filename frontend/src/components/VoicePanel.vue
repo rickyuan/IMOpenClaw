@@ -40,12 +40,19 @@
               <rect x="14" y="8" width="4" height="16" rx="1" transform="translate(0,-4)"/>
               <rect x="8" y="10" width="16" height="4" rx="1" transform="translate(-4,0)"/>
             </template>
+            <template v-else-if="agentId === 'airport'">
+              <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+            </template>
             <template v-else>
               <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
               <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
             </template>
           </svg>
-          <span>{{ agentId === 'medical' ? 'Start a voice chat to book a consultation with Ava' : 'Start a voice chat to order coffee with Bella' }}</span>
+          <span>{{
+            agentId === 'medical' ? 'Start a voice chat to book a consultation with Ava' :
+            agentId === 'airport' ? 'Chat with ARIA — ask about flights, transport, Jewel & more' :
+            'Start a voice chat to order coffee with Bella'
+          }}</span>
         </div>
         <template v-for="(entry, i) in entries" :key="i">
           <!-- Text message -->
@@ -72,6 +79,19 @@
           </div>
           <div v-else-if="entry.type === 'appointment_card'" class="card-entry">
             <AppointmentCard :appointment="appointmentData" />
+          </div>
+          <!-- Airport cards -->
+          <div v-else-if="entry.type === 'flight_status_card'" class="card-entry">
+            <FlightStatusCard :flight="flightData" />
+          </div>
+          <div v-else-if="entry.type === 'transport_card'" class="card-entry">
+            <TransportCard :data="transportData" />
+          </div>
+          <div v-else-if="entry.type === 'jewel_card'" class="card-entry">
+            <JewelCard :data="jewelData" />
+          </div>
+          <div v-else-if="entry.type === 'dining_card'" class="card-entry">
+            <TerminalDiningCard :data="diningData" />
           </div>
         </template>
       </div>
@@ -114,6 +134,10 @@ import ConfirmationCard from './cards/ConfirmationCard.vue';
 import ServiceMenuCard from './cards/ServiceMenuCard.vue';
 import DoctorListCard from './cards/DoctorListCard.vue';
 import AppointmentCard from './cards/AppointmentCard.vue';
+import FlightStatusCard from './cards/FlightStatusCard.vue';
+import TransportCard from './cards/TransportCard.vue';
+import JewelCard from './cards/JewelCard.vue';
+import TerminalDiningCard from './cards/TerminalDiningCard.vue';
 
 type Entry =
   | { type: 'message'; text: string; role: string; active: boolean }
@@ -122,7 +146,11 @@ type Entry =
   | { type: 'confirmation_card' }
   | { type: 'service_menu_card' }
   | { type: 'doctor_list_card' }
-  | { type: 'appointment_card' };
+  | { type: 'appointment_card' }
+  | { type: 'flight_status_card' }
+  | { type: 'transport_card' }
+  | { type: 'jewel_card' }
+  | { type: 'dining_card' };
 
 const props = defineProps<{ userId: string }>();
 
@@ -132,24 +160,38 @@ const aiState = ref('idle');
 const errorMsg = ref('');
 const entries = ref<Entry[]>([]);
 const conversationArea = ref<HTMLElement | null>(null);
-const agentId = ref<'barista' | 'medical'>('barista');
+const agentId = ref<'barista' | 'medical' | 'airport'>('barista');
 
 // Track which cards have been shown
-const shownCards = reactive({ menu: false, order: false, confirmation: false, serviceMenu: false, doctorList: false, appointment: false });
+const shownCards = reactive({
+  menu: false, order: false, confirmation: false,
+  serviceMenu: false, doctorList: false, appointment: false,
+  flight: false, transport: false, jewel: false, dining: false,
+});
 
 const conversationText = ref<string[]>([]);
 
 const messageCount = computed(() => entries.value.filter(e => e.type === 'message').length);
 
-const botInitial = computed(() => agentId.value === 'medical' ? 'A' : 'B');
+const botInitial = computed(() => {
+  if (agentId.value === 'medical') return 'A';
+  if (agentId.value === 'airport') return '✈';
+  return 'B';
+});
 
-const startButtonLabel = computed(() =>
-  agentId.value === 'medical' ? 'Start Voice Consultation' : 'Start Voice Order'
-);
+const startButtonLabel = computed(() => {
+  if (agentId.value === 'medical') return 'Start Voice Consultation';
+  if (agentId.value === 'airport') return 'Chat with ARIA';
+  return 'Start Voice Order';
+});
 
 const statusLabel = computed(() => {
-  if (!isActive.value) return agentId.value === 'medical' ? 'Ready to consult' : 'Ready to order';
-  const botName = agentId.value === 'medical' ? 'Ava' : 'Bella';
+  if (!isActive.value) {
+    if (agentId.value === 'medical') return 'Ready to consult';
+    if (agentId.value === 'airport') return 'ARIA ready to assist';
+    return 'Ready to order';
+  }
+  const botName = agentId.value === 'medical' ? 'Ava' : agentId.value === 'airport' ? 'ARIA' : 'Bella';
   const labels: Record<string, string> = {
     idle: 'Connected',
     listening: 'Listening...',
@@ -193,6 +235,47 @@ const appointmentData = reactive({
   confirmationNo: 'DA-000000',
 });
 
+// ─── Airport (ARIA) data ───
+const DEMO_FLIGHTS = [
+  { flightNo: 'SQ 321', airline: 'Singapore Airlines', airlineCode: 'SQ', origin: 'Singapore (SIN)', destination: 'London (LHR)', terminal: 'T3', gate: 'C23', status: 'On Time', departure: '14:30', arrival: '21:25+1', checkInCloses: '12:30' },
+  { flightNo: 'CX 759', airline: 'Cathay Pacific', airlineCode: 'CX', origin: 'Singapore (SIN)', destination: 'Hong Kong (HKG)', terminal: 'T4', gate: 'A12', status: 'Boarding', departure: '13:45', arrival: '17:40', checkInCloses: '12:45' },
+  { flightNo: 'TR 608', airline: 'Scoot', airlineCode: 'TR', origin: 'Singapore (SIN)', destination: 'Bangkok (BKK)', terminal: 'T2', gate: 'D15', status: 'Delayed', departure: '16:20', arrival: '17:50', checkInCloses: '14:20', delayMinutes: 45 },
+  { flightNo: 'QR 647', airline: 'Qatar Airways', airlineCode: 'QR', origin: 'Singapore (SIN)', destination: 'Doha (DOH)', terminal: 'T1', gate: 'B08', status: 'On Time', departure: '18:00', arrival: '22:30', checkInCloses: '16:00' },
+];
+const flightData = reactive({ ...DEMO_FLIGHTS[0] });
+
+const transportData = reactive({
+  destination: 'City Centre',
+  options: [
+    { mode: 'MRT', icon: 'mrt', label: 'East-West Line', detail: 'City Hall / Raffles Place', duration: '~30 min', price: 'S$2.10–2.50', tip: 'Most affordable option' },
+    { mode: 'Express', icon: 'train', label: 'Changi Express (TEL)', detail: 'Direct city link, T2/T3 station', duration: '~29 min', price: 'S$5.00', tip: 'Fastest transit option' },
+    { mode: 'Bus', icon: 'bus', label: 'Bus 36', detail: 'Orchard Road (direct)', duration: '~60 min', price: 'S$2.50', tip: 'Budget-friendly, scenic route' },
+    { mode: 'Grab', icon: 'taxi', label: 'Grab / Taxi', detail: 'CBD or any destination', duration: '25–35 min', price: '~S$20–35', tip: 'Door-to-door, higher at peak hours' },
+  ],
+});
+
+const jewelData = reactive({
+  highlights: [
+    { name: 'HSBC Rain Vortex', desc: "World's tallest indoor waterfall at 40m. Nightly light shows at 7:30pm & 8:30pm.", icon: 'vortex', tag: 'Free entry' },
+    { name: 'Canopy Park', desc: 'Sky Nets Walk, Bouncing Net, Hedge Maze & Mirror Maze on Level 5.', icon: 'park', tag: 'From S$12' },
+    { name: '100+ Dining Options', desc: 'Din Tai Fung, Shake Shack, Five Guys, Tsuta (Michelin), and local hawker favourites.', icon: 'dining', tag: 'Open daily' },
+    { name: '280+ Retail Stores', desc: 'Luxury brands, tech gadgets, and Singapore souvenirs across 5 floors.', icon: 'shopping', tag: 'Open daily' },
+  ],
+  location: 'Connected to T1, T2, T3 · Free shuttle to T4',
+  hours: 'Open 24 hours (some shops vary)',
+});
+
+const diningData = reactive({
+  terminal: 'T3',
+  restaurants: [
+    { name: 'Shake Shack', cuisine: 'American Burgers', location: 'T3, Level 1', hours: '6am–12am', priceRange: 'S$12–22' },
+    { name: 'Din Tai Fung', cuisine: 'Taiwanese Dim Sum', location: 'Jewel, Level 2', hours: '10am–10pm', priceRange: 'S$18–35' },
+    { name: 'PAUL Bakery', cuisine: 'French Café & Pastries', location: 'T3, Level 2', hours: '24 hours', priceRange: 'S$8–18' },
+    { name: 'Poulet', cuisine: 'French Comfort Food', location: 'T3, Level 2', hours: '10am–10pm', priceRange: 'S$15–28' },
+    { name: 'A&W', cuisine: 'Singapore Nostalgia', location: 'T3, Level B2', hours: '24 hours', priceRange: 'S$6–12' },
+  ],
+});
+
 function generateOrderNo(): string {
   return 'QC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
@@ -207,6 +290,43 @@ function detectBaristaCard(text: string): 'menu' | 'order' | 'confirmation' | nu
   if (!shownCards.order && (lower.includes('total') || lower.includes('applied')) && (lower.includes('$') || lower.includes('promo') || lower.includes('sent'))) return 'order';
   if (!shownCards.confirmation && (lower.includes('all set') || lower.includes('confirmed') || lower.includes('will be ready'))) return 'confirmation';
   return null;
+}
+
+// ─── Card detection (airport) ───
+function detectAirportCard(text: string): 'flight_status' | 'transport' | 'jewel' | 'dining' | null {
+  const lower = text.toLowerCase();
+  const isFlight = lower.includes('flight details') || lower.includes('flight status') || lower.includes('your flight') ||
+    lower.includes('on time') || lower.includes('boarding') || lower.includes('gate c') || lower.includes('gate a') ||
+    lower.includes('gate d') || lower.includes('gate b') || lower.includes('sq 321') || lower.includes('cx 759') ||
+    lower.includes('tr 608') || lower.includes('qr 647') || lower.includes('terminal 3') || lower.includes('terminal 4');
+  if (isFlight && !shownCards.flight) return 'flight_status';
+
+  const isTransport = lower.includes('transport options') || lower.includes('how to get') || lower.includes('getting to') ||
+    lower.includes('take the mrt') || lower.includes('mrt') && lower.includes('city') || lower.includes('bus 36') ||
+    lower.includes('grab') && lower.includes('taxi');
+  if (isTransport && !shownCards.transport) return 'transport';
+
+  const isJewel = lower.includes('jewel changi') || lower.includes('rain vortex') || lower.includes('canopy park') ||
+    lower.includes("jewel has to offer") || lower.includes('show you jewel');
+  if (isJewel && !shownCards.jewel) return 'jewel';
+
+  const isDining = lower.includes('dining options') || lower.includes('great restaurants') || lower.includes('places to eat') ||
+    lower.includes('din tai fung') || lower.includes('shake shack') || lower.includes('food options');
+  if (isDining && !shownCards.dining) return 'dining';
+
+  return null;
+}
+
+function extractFlightFromText(allText: string) {
+  const lower = allText.toLowerCase();
+  for (const f of DEMO_FLIGHTS) {
+    const fn = f.flightNo.toLowerCase().replace(' ', '');
+    if (lower.includes(fn) || lower.includes(f.flightNo.toLowerCase())) {
+      Object.assign(flightData, f);
+      return;
+    }
+  }
+  Object.assign(flightData, DEMO_FLIGHTS[0]);
 }
 
 // ─── Card detection (medical) ───
@@ -274,7 +394,14 @@ function onSubtitle(e: Event) {
     if (role === 'assistant') {
       const allText = conversationText.value.join('\n');
 
-      if (agentId.value === 'medical') {
+      if (agentId.value === 'airport') {
+        extractFlightFromText(allText);
+        const cardType = detectAirportCard(text);
+        if (cardType === 'flight_status') { shownCards.flight = true; entries.value.push({ type: 'flight_status_card' }); }
+        else if (cardType === 'transport') { shownCards.transport = true; entries.value.push({ type: 'transport_card' }); }
+        else if (cardType === 'jewel') { shownCards.jewel = true; entries.value.push({ type: 'jewel_card' }); }
+        else if (cardType === 'dining') { shownCards.dining = true; entries.value.push({ type: 'dining_card' }); }
+      } else if (agentId.value === 'medical') {
         extractMedicalAppt(allText);
         const cardType = detectMedicalCard(text);
         if (cardType === 'service_menu') { shownCards.serviceMenu = true; entries.value.push({ type: 'service_menu_card' }); }
@@ -299,7 +426,7 @@ function onState(e: Event) {
 async function loadAgent() {
   try {
     const result = await fetchAgents(props.userId);
-    agentId.value = result.activeAgent as 'barista' | 'medical';
+    agentId.value = result.activeAgent as 'barista' | 'medical' | 'airport';
   } catch (e) {
     console.error('Failed to load agent:', e);
   }
@@ -327,6 +454,10 @@ const welcomeMessages: Record<string, { text: string; card: string }> = {
     text: "Hi! Welcome to Doctor Anywhere. I'm Ava, your healthcare assistant. How can I help you today?",
     card: 'service_menu_card',
   },
+  airport: {
+    text: "Welcome to Changi Airport! I'm ARIA, your AI passenger assistant. Need help with flights, transport, or exploring the airport?",
+    card: '',
+  },
 };
 
 async function start() {
@@ -347,6 +478,11 @@ async function start() {
     setTimeout(() => {
       if (!entries.value.some(e => e.type === 'message' && e.role === 'assistant')) {
         entries.value.push({ type: 'message', text: welcome.text, role: 'assistant', active: false });
+      }
+      if (agentId.value === 'airport') {
+        // No initial card for airport — ARIA shows cards contextually
+        scrollToBottom();
+        return;
       }
       const cardKey = agentId.value === 'medical' ? 'serviceMenu' : 'menu';
       if (!(shownCards as any)[cardKey]) {
@@ -415,6 +551,11 @@ async function stop() {
   border-color: #2E86DE;
 }
 
+/* Airport agent uses purple rings */
+.ring-wrap.airport .ring {
+  border-color: #7C3AED;
+}
+
 .ring-wrap.listening .ring,
 .ring-wrap.speaking .ring {
   opacity: 0.15;
@@ -457,6 +598,12 @@ async function stop() {
   border-color: #2E86DE;
   color: #2E86DE;
   box-shadow: 0 0 24px rgba(46,134,222,0.25);
+}
+.ring-wrap.airport.listening .orb {
+  background: rgba(124,58,237,0.1);
+  border-color: #7C3AED;
+  color: #7C3AED;
+  box-shadow: 0 0 24px rgba(124,58,237,0.25);
 }
 .ring-wrap.thinking .orb {
   background: rgba(210,153,34,0.1);
@@ -684,5 +831,55 @@ async function stop() {
 .btn-stop:hover {
   background: rgba(248,81,73,0.15);
   border-color: var(--error);
+}
+
+/* Mobile H5 */
+@media (max-width: 640px) {
+  .voice-panel {
+    padding: 16px 12px 12px;
+    gap: 14px;
+  }
+
+  .ring-wrap {
+    width: 80px;
+    height: 80px;
+  }
+  .ring-1 { width: 80px; height: 80px; }
+  .ring-2 { width: 64px; height: 64px; }
+  .ring-3 { width: 50px; height: 50px; }
+  .orb { width: 48px; height: 48px; }
+  .orb svg { width: 22px; height: 22px; }
+
+  .status-section { gap: 8px; }
+  .status-label { font-size: 12px; }
+
+  .conversation-section {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+  }
+
+  .conversation-body {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .card-entry {
+    max-width: 100%;
+    margin: 4px 0;
+  }
+
+  .message-bubble {
+    max-width: 85%;
+    font-size: 13px;
+    padding: 7px 10px;
+  }
+
+  .btn-start, .btn-stop {
+    padding: 10px 24px;
+    font-size: 13px;
+    width: 100%;
+    justify-content: center;
+    max-width: 300px;
+  }
 }
 </style>

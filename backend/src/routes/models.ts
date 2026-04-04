@@ -5,6 +5,7 @@ import {
 } from '../services/openclaw';
 import { resetMedicalCards } from '../services/medical-detection';
 import { resetUserCards } from '../services/card-detection';
+import { resetAirportCards } from '../services/airport-detection';
 
 const router = Router();
 
@@ -58,6 +59,7 @@ router.post('/api/agents/select', (req: Request, res: Response) => {
   clearChatHistory(userId);
   resetUserCards(userId);
   resetMedicalCards(userId);
+  resetAirportCards(userId);
   console.log(`[Agents] User ${userId} switched to agent: ${agent.name}`);
   res.json({ activeAgent: agentId, name: agent.name });
 });
