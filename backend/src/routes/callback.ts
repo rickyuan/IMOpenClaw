@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { callOpenClaw } from '../services/openclaw';
 import { sendBotMessage, sendBotCustomMessage } from '../services/chat-api';
 import { getAgent } from '../agents/registry';
-import { getUserAgent, getUserModel } from '../state/user-preferences';
+import { getUserAgent, getUserModel, setUserAgent, setUserModel } from '../state/user-preferences';
 import { isUserConnected, createCalendarEvent } from '../services/google-calendar';
 import { callbackLimiter } from '../middleware/rate-limit';
 
@@ -67,8 +67,21 @@ router.post('/api/im/callback', callbackLimiter, async (req: Request, res: Respo
   // IMPORTANT: On Vercel serverless, the function freezes after res is sent.
   // Must complete ALL async work BEFORE responding.
   try {
-    const agentId = getUserAgent(From_Account, 'barista');
-    const modelId = getUserModel(From_Account, '1');
+    // On Vercel serverless, in-memory state is lost between invocations.
+    // Read agentId/modelId from CloudCustomData attached by the frontend.
+    let agentId = getUserAgent(From_Account, 'barista');
+    let modelId = getUserModel(From_Account, '1');
+    try {
+      const cloudData = req.body.CloudCustomData;
+      if (cloudData) {
+        const parsed = JSON.parse(cloudData);
+        if (parsed.agentId) agentId = parsed.agentId;
+        if (parsed.modelId) modelId = parsed.modelId;
+        // Sync to in-memory state (helps within same warm instance)
+        setUserAgent(From_Account, agentId);
+        if (parsed.modelId) setUserModel(From_Account, modelId);
+      }
+    } catch {}
     const agent = getAgent(agentId);
 
     log(`[${new Date().toISOString()}] From: ${From_Account}, Agent: ${agentId}, Model: ${modelId}, Msg: ${userMessage}`);

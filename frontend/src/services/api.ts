@@ -31,7 +31,9 @@ export async function selectModel(userId: string, modelId: string): Promise<{ ac
   if (!response.ok) {
     throw new Error(`Failed to select model: ${response.statusText}`);
   }
-  return response.json();
+  const result = await response.json();
+  try { localStorage.setItem('openclaw_model', result.activeId); } catch {}
+  return result;
 }
 
 // ─── Agents ──────────────────────────────────────────────────────────
@@ -48,7 +50,10 @@ export async function fetchAgents(userId: string): Promise<{ agents: AgentInfo[]
   if (!response.ok) {
     throw new Error(`Failed to fetch agents: ${response.statusText}`);
   }
-  return response.json();
+  const result = await response.json();
+  // Sync localStorage with server-side active agent
+  try { localStorage.setItem('openclaw_agent', result.activeAgent); } catch {}
+  return result;
 }
 
 export async function selectAgent(userId: string, agentId: string): Promise<{ activeAgent: string; name: string }> {
@@ -60,7 +65,10 @@ export async function selectAgent(userId: string, agentId: string): Promise<{ ac
   if (!response.ok) {
     throw new Error(`Failed to select agent: ${response.statusText}`);
   }
-  return response.json();
+  const result = await response.json();
+  // Persist to localStorage so TUIKit can attach it to CloudCustomData
+  try { localStorage.setItem('openclaw_agent', result.activeAgent); } catch {}
+  return result;
 }
 
 // ─── Google Calendar ─────────────────────────────────────────────────

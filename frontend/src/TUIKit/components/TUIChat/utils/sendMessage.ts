@@ -65,8 +65,18 @@ export const sendMessages = async (
       };
       // handle message typing
       let textMessageContent;
-      const sendMessageOptions = {
+      // Inject active agentId + modelId into CloudCustomData so the
+      // serverless callback handler knows which agent to use (no server-side state needed)
+      let _agentMeta: Record<string, string> = {};
+      try {
+        const _stored = localStorage.getItem('openclaw_agent');
+        const _model = localStorage.getItem('openclaw_model');
+        if (_stored) _agentMeta.agentId = _stored;
+        if (_model) _agentMeta.modelId = _model;
+      } catch {}
+      const sendMessageOptions: Record<string, any> = {
         offlinePushInfo: {},
+        cloudCustomData: JSON.stringify(_agentMeta),
       };
       const offlinePushInfoCreateParams: IOfflinePushInfoCreateParams = {
         conversation: currentConversation,
