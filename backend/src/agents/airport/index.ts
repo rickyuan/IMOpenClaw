@@ -352,21 +352,12 @@ function detectAirportCardTrigger(userId: string, displayReply: string): CardTri
   const shownCards = getShownCards(userId);
   const lower = displayReply.toLowerCase();
 
-  // Flight status card
+  // Flight status card — only trigger on explicit phrases from the system prompt
+  // Avoid: hardcoded flight numbers, generic words like "on time", "boarding"
   const isFlight = (
     lower.includes('here are your flight details') ||
     lower.includes('let me pull up your flight') ||
-    lower.includes('flight details') ||
-    lower.includes('flight status') ||
-    lower.includes('your flight') ||
-    lower.includes('flight is') ||
-    lower.includes('sq 321') || lower.includes('sq321') ||
-    lower.includes('cx 759') || lower.includes('cx759') ||
-    lower.includes('tr 608') || lower.includes('tr608') ||
-    lower.includes('qr 647') || lower.includes('qr647') ||
-    lower.includes('on time') ||
-    lower.includes('boarding') ||
-    lower.includes('gate c23') || lower.includes('gate a12') || lower.includes('gate d15') || lower.includes('gate b08')
+    (lower.includes('flight') && lower.includes('gate') && lower.includes('terminal'))
   );
   if (isFlight && !shownCards.has('flight')) {
     shownCards.add('flight');
@@ -377,19 +368,13 @@ function detectAirportCardTrigger(userId: string, displayReply: string): CardTri
     };
   }
 
-  // Transport card
+  // Transport card — explicit trigger phrases + compound conditions only
   const isTransport = (
     lower.includes('here are your transport options') ||
     lower.includes("here's how to get there") ||
     lower.includes('transport options') ||
-    lower.includes('take the mrt') ||
-    lower.includes('changi airport mrt') ||
-    lower.includes('getting to') ||
-    lower.includes('how to get') ||
-    lower.includes('grab or taxi') ||
-    lower.includes('bus 36') ||
-    (lower.includes('mrt') && lower.includes('city')) ||
-    (lower.includes('taxi') && lower.includes('cbd'))
+    (lower.includes('take the mrt') && (lower.includes('min') || lower.includes('station'))) ||
+    (lower.includes('mrt') && lower.includes('grab') && lower.includes('min'))
   );
   if (isTransport && !shownCards.has('transport')) {
     shownCards.add('transport');
@@ -400,16 +385,12 @@ function detectAirportCardTrigger(userId: string, displayReply: string): CardTri
     };
   }
 
-  // Jewel card
+  // Jewel card — explicit trigger phrases + Jewel-specific landmarks
   const isJewel = (
     lower.includes("here's what jewel has to offer") ||
     lower.includes('let me show you jewel') ||
-    lower.includes('jewel changi') ||
-    lower.includes('rain vortex') ||
-    lower.includes('canopy park') ||
-    (lower.includes('jewel') && lower.includes('waterfall')) ||
-    (lower.includes('jewel') && lower.includes('shopping')) ||
-    (lower.includes('jewel') && lower.includes('dining'))
+    (lower.includes('jewel changi') && (lower.includes('rain vortex') || lower.includes('canopy') || lower.includes('shopping') || lower.includes('dining'))) ||
+    lower.includes('rain vortex')
   );
   if (isJewel && !shownCards.has('jewel')) {
     shownCards.add('jewel');
@@ -420,18 +401,13 @@ function detectAirportCardTrigger(userId: string, displayReply: string): CardTri
     };
   }
 
-  // Dining card
+  // Dining card — explicit trigger phrases + compound conditions
   const isDining = (
     lower.includes('here are some dining options') ||
     lower.includes('here are some great restaurants') ||
     lower.includes('here are great places to eat') ||
-    lower.includes('dining options') ||
-    lower.includes('din tai fung') ||
-    lower.includes('shake shack') ||
-    lower.includes('some restaurants') ||
-    lower.includes('food options') ||
-    (lower.includes('eat') && (lower.includes('terminal') || lower.includes('jewel'))) ||
-    (lower.includes('restaurant') && lower.includes('terminal'))
+    (lower.includes('dining options') && (lower.includes('terminal') || lower.includes('jewel'))) ||
+    (lower.includes('restaurant') && lower.includes('terminal') && lower.includes('recommend'))
   );
   if (isDining && !shownCards.has('dining')) {
     shownCards.add('dining');

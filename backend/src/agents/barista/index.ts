@@ -219,19 +219,19 @@ function detectCardType(userId: string, reply: string): BaristaCardType | null {
 
   // Step 5: Confirmation — AI says order is confirmed / on its way / enjoy
   // Check FIRST because confirmation phrases are the most specific.
+  // Require order-specific context to avoid false positives.
   const isConfirmation = (
-    lower.includes('confirmed') ||
+    lower.includes('order is confirmed') ||
+    lower.includes('order confirmed') ||
     lower.includes('on its way') ||
     lower.includes('enjoy your coffee') ||
-    lower.includes('enjoy!') ||
-    lower.includes('all set') ||
+    lower.includes('enjoy your drink') ||
+    (lower.includes('all set') && (lower.includes('order') || lower.includes('coffee') || lower.includes('delivery') || lower.includes('pickup'))) ||
     lower.includes('has been placed') ||
     lower.includes('order is placed') ||
-    lower.includes('order is set') ||
     lower.includes('set for delivery') ||
     lower.includes('set for pickup') ||
-    lower.includes('will be ready') ||
-    lower.includes('ready in') ||
+    (lower.includes('ready in') && lower.includes('minute')) ||
     lower.includes('已确认') ||
     lower.includes('正在准备') ||
     lower.includes('马上就好')

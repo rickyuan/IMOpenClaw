@@ -144,17 +144,16 @@ function detectMedicalCardTrigger(userId: string, displayReply: string): CardTri
   const shownCards = getShownCards(userId);
   const lower = displayReply.toLowerCase();
 
-  // Appointment confirmed
+  // Appointment confirmed — require explicit confirmation phrases
   const isConfirmed = (
     lower.includes('appointment is confirmed') ||
     lower.includes('booking is confirmed') ||
     lower.includes('appointment has been booked') ||
     lower.includes('successfully booked') ||
-    lower.includes('booked your') ||
-    lower.includes('you\'re all set') ||
-    lower.includes('all set') ||
-    lower.includes('see you on') ||
-    lower.includes('confirmed your') ||
+    lower.includes('booked your appointment') ||
+    lower.includes('confirmed your appointment') ||
+    lower.includes('confirmed your booking') ||
+    (lower.includes('see you on') && lower.includes('dr.')) ||
     lower.includes('预约已确认') ||
     lower.includes('预约成功')
   );
@@ -167,26 +166,17 @@ function detectMedicalCardTrigger(userId: string, displayReply: string): CardTri
     };
   }
 
-  // Doctor list — AI mentions a specific doctor or recommends
+  // Doctor list — require "available doctors" trigger phrase or doctor recommendations
   const isDoctorList = (
     lower.includes('available doctors') ||
-    lower.includes('here are our') ||
-    lower.includes('here are the') ||
+    lower.includes('here are our available') ||
+    lower.includes('here are the doctors') ||
     lower.includes('recommend dr.') ||
     lower.includes('i\'d recommend dr.') ||
     lower.includes('i recommend dr.') ||
     lower.includes('suggest dr.') ||
-    lower.includes('which doctor') ||
-    lower.includes('dr. sarah') ||
-    lower.includes('dr. james') ||
-    lower.includes('dr. emily') ||
-    lower.includes('dr. michael') ||
-    lower.includes('dr. lisa') ||
-    lower.includes('dr. rachel') ||
-    (lower.includes('dr.') && lower.includes('available')) ||
-    (lower.includes('dr.') && lower.includes('specializ')) ||
-    lower.includes('推荐医生') ||
-    lower.includes('可以预约')
+    (lower.includes('dr.') && lower.includes('available') && lower.includes('specializ')) ||
+    lower.includes('推荐医生')
   );
   if (isDoctorList && !shownCards.has('doctor_list')) {
     shownCards.add('doctor_list');
@@ -197,15 +187,11 @@ function detectMedicalCardTrigger(userId: string, displayReply: string): CardTri
     };
   }
 
-  // Service menu — AI greets or asks what service they need
+  // Service menu — require Doctor Anywhere context, not just generic greetings
   const isServiceMenu = (
-    lower.includes('how can i help') ||
-    lower.includes('happy to help') ||
-    lower.includes('what do you need') ||
-    lower.includes('what would you like') ||
-    lower.includes('are you looking to') ||
     lower.includes('welcome to doctor anywhere') ||
-    lower.includes('our services') ||
+    (lower.includes('our services') && (lower.includes('teleconsult') || lower.includes('screening') || lower.includes('gp'))) ||
+    (lower.includes('how can i help') && (lower.includes('doctor') || lower.includes('consult') || lower.includes('booking') || lower.includes('appointment'))) ||
     lower.includes('see a gp') ||
     (lower.includes('teleconsult') && lower.includes('screening')) ||
     lower.includes('想要什么服务')
