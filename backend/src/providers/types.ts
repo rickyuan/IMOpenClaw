@@ -10,6 +10,8 @@ export interface ChatParams {
   userId: string;
   message: string;
   systemPrompt: string;
+  /** Agent ID — used to namespace OpenClaw sessions per agent */
+  agentId?: string;
   /** Conversation history (only used by stateless providers) */
   history?: Array<{ role: string; content: string }>;
 }

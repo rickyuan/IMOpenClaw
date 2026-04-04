@@ -62,6 +62,7 @@ export async function callOpenClaw(message: string, userId: string): Promise<LLM
     userId,
     message,
     systemPrompt: agent.textSystemPrompt,
+    agentId,
   });
 
   // Agent-specific display text cleaning

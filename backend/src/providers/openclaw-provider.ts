@@ -20,9 +20,6 @@ export class OpenClawProvider implements LLMProvider {
   apiUrl: string;
   apiKey: string;
 
-  // Track active session per user: maps userId → { sessionSuffix, lastSystemPrompt }
-  private sessions = new Map<string, { suffix: number; lastPrompt: string }>();
-
   constructor(config: { id: string; name: string; model: string; apiUrl: string; apiKey: string }) {
     this.id = config.id;
     this.name = config.name;
@@ -33,30 +30,20 @@ export class OpenClawProvider implements LLMProvider {
 
   /**
    * Get the effective user ID for OpenClaw sessions.
-   * When the system prompt changes (agent switch), we bump the suffix
-   * so OpenClaw starts a fresh session.
+   * We encode the agentId directly into the user field so each agent
+   * gets its own OpenClaw session. This is stateless — no in-memory
+   * tracking needed, which is critical for Vercel serverless where
+   * the instance may cold-start on every request.
    */
-  private getSessionUser(userId: string, systemPrompt: string): string {
-    const session = this.sessions.get(userId);
-
-    if (!session) {
-      // First call — initialize session
-      this.sessions.set(userId, { suffix: 0, lastPrompt: systemPrompt });
-      return userId;
+  private getSessionUser(userId: string, agentId?: string): string {
+    if (agentId && agentId !== 'barista') {
+      return `${userId}_${agentId}`;
     }
-
-    if (session.lastPrompt !== systemPrompt) {
-      // Agent switched — bump suffix to start fresh OpenClaw session
-      session.suffix += 1;
-      session.lastPrompt = systemPrompt;
-      console.log(`[OpenClaw] Agent switched for ${userId}, new session suffix: ${session.suffix}`);
-    }
-
-    return session.suffix === 0 ? userId : `${userId}_s${session.suffix}`;
+    return userId;
   }
 
   async chat(params: ChatParams): Promise<ChatResponse> {
-    const sessionUser = this.getSessionUser(params.userId, params.systemPrompt);
+    const sessionUser = this.getSessionUser(params.userId, params.agentId);
 
     const body = {
       model: this.model,
@@ -93,11 +80,8 @@ export class OpenClawProvider implements LLMProvider {
     return { raw, display: raw };
   }
 
-  resetSession(userId: string): void {
-    const session = this.sessions.get(userId);
-    if (session) {
-      session.suffix += 1;
-      console.log(`[OpenClaw] Session reset for ${userId}, new suffix: ${session.suffix}`);
-    }
+  resetSession(_userId: string): void {
+    // No-op: sessions are now namespaced by agentId in the user field,
+    // so each agent automatically gets its own OpenClaw session.
   }
 }
