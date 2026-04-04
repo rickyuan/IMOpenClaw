@@ -128,23 +128,32 @@ function extractOrderDetails(userId: string): OrderDetails {
     promo: 'DEVDAY Promo — Free upsize!',
   };
 
-  const userMessages = conv.filter(m => m.startsWith('user:')).join('\n').toLowerCase();
+  // Reverse to prioritize the latest user message (most recent choice wins)
+  const userMsgList = conv.filter(m => m.startsWith('user:')).reverse();
+  const userMessages = userMsgList.join('\n').toLowerCase();
   const aiMessages = conv.filter(m => m.startsWith('assistant:')).join('\n').toLowerCase();
   const drinks = ['espresso', 'americano', 'latte', 'cappuccino', 'mocha', 'matcha'];
 
-  // Extract drink — prioritize user messages, then AI confirmation
+  // Extract drink — check latest user message first, then older ones, then AI confirmation
   let drinkFound = false;
-  for (const d of drinks) {
-    if (userMessages.includes(d)) {
-      order.drink = d.charAt(0).toUpperCase() + d.slice(1);
-      drinkFound = true;
+  for (const msg of userMsgList) {
+    const msgLower = msg.toLowerCase();
+    for (const d of drinks) {
+      if (msgLower.includes(d)) {
+        order.drink = d.charAt(0).toUpperCase() + d.slice(1);
+        drinkFound = true;
+        break;
+      }
     }
+    if (drinkFound) break;
   }
   if (!drinkFound) {
     for (const d of drinks) {
       const confirmPattern = new RegExp(`(?:got it|order|confirmed|your).*${d}`, 'i');
       if (confirmPattern.test(aiMessages)) {
         order.drink = d.charAt(0).toUpperCase() + d.slice(1);
+        drinkFound = true;
+        break;
       }
     }
   }

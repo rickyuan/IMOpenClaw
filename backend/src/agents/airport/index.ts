@@ -189,9 +189,11 @@ const DINING_DATA = {
 
 // ─── Data extraction helpers ────────────────────────────────────────────────
 
-function extractFlightData(userId: string): typeof DEMO_FLIGHTS[0] {
+function extractFlightData(userId: string, currentReply?: string): typeof DEMO_FLIGHTS[0] {
   const conv = getConversation(userId);
-  const allText = conv.join('\n').toLowerCase();
+  // Combine conversation history + current AI reply for matching.
+  // On Vercel cold start, conv may be empty, but currentReply has the latest response.
+  const allText = [...conv, currentReply || ''].join('\n').toLowerCase();
 
   for (const flight of DEMO_FLIGHTS) {
     const fn = flight.flightNo.toLowerCase().replace(' ', '');
@@ -203,9 +205,9 @@ function extractFlightData(userId: string): typeof DEMO_FLIGHTS[0] {
   return DEMO_FLIGHTS[0];
 }
 
-function extractDiningTerminal(userId: string): typeof DINING_DATA {
+function extractDiningTerminal(userId: string, currentReply?: string): typeof DINING_DATA {
   const conv = getConversation(userId);
-  const allText = conv.join('\n').toLowerCase();
+  const allText = [...conv, currentReply || ''].join('\n').toLowerCase();
 
   const data = { ...DINING_DATA };
   if (allText.includes('t1') || allText.includes('terminal 1')) data.terminal = 'T1';
@@ -363,7 +365,7 @@ function detectAirportCardTrigger(userId: string, displayReply: string): CardTri
     shownCards.add('flight');
     return {
       type: 'flight_status_card',
-      data: extractFlightData(userId),
+      data: extractFlightData(userId, displayReply),
       description: 'Flight status information',
     };
   }
@@ -413,7 +415,7 @@ function detectAirportCardTrigger(userId: string, displayReply: string): CardTri
     shownCards.add('dining');
     return {
       type: 'dining_card',
-      data: extractDiningTerminal(userId),
+      data: extractDiningTerminal(userId, displayReply),
       description: 'Dining recommendations',
     };
   }

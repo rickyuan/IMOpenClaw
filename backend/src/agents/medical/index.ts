@@ -81,15 +81,18 @@ function extractAppointmentDetails(userId: string): AppointmentDetails {
     }
   }
 
-  // Extract consult type
-  if (allText.includes('house call') || allText.includes('home visit')) {
+  // Extract consult type — prioritize user messages to avoid false matches
+  // from AI mentioning multiple service types in its responses.
+  // Only override fee if no specific doctor was matched (doctor fee takes priority).
+  const doctorWasMatched = appt.doctor !== 'Dr. Sarah Chen' || userText.includes('sarah') || userText.includes('chen');
+  if (userText.includes('house call') || userText.includes('home visit')) {
     appt.consultType = 'Doctor House Call';
-    appt.fee = 220;
-  } else if (allText.includes('clinic') || allText.includes('in-person') || allText.includes('walk-in')) {
+    if (!doctorWasMatched) appt.fee = 220;
+  } else if (userText.includes('clinic') || userText.includes('in-person') || userText.includes('walk-in')) {
     appt.consultType = 'Clinic Visit';
-  } else if (allText.includes('screening')) {
+  } else if (userText.includes('screening') || userText.includes('health check')) {
     appt.consultType = 'Health Screening';
-    appt.fee = 86;
+    if (!doctorWasMatched) appt.fee = 86;
   }
 
   // Extract date
