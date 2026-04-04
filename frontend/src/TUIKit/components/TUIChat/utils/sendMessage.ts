@@ -57,14 +57,6 @@ export const sendMessages = async (
   }
   messageList?.forEach(async (content: ITipTapEditorContent) => {
     try {
-      const options: SendMessageParams = {
-        to: currentConversation?.groupProfile?.groupID || currentConversation?.userProfile?.userID,
-        conversationType: currentConversation?.type as any,
-        payload: {},
-        needReadReceipt: isEnabledMessageReadReceiptGlobal(),
-      };
-      // handle message typing
-      let textMessageContent;
       // Inject active agentId + modelId into CloudCustomData so the
       // serverless callback handler knows which agent to use (no server-side state needed)
       let _agentMeta: Record<string, string> = {};
@@ -74,9 +66,17 @@ export const sendMessages = async (
         if (_stored) _agentMeta.agentId = _stored;
         if (_model) _agentMeta.modelId = _model;
       } catch {}
+      const options: SendMessageParams = {
+        to: currentConversation?.groupProfile?.groupID || currentConversation?.userProfile?.userID,
+        conversationType: currentConversation?.type as any,
+        payload: {},
+        needReadReceipt: isEnabledMessageReadReceiptGlobal(),
+        cloudCustomData: JSON.stringify(_agentMeta),
+      };
+      // handle message typing
+      let textMessageContent;
       const sendMessageOptions: Record<string, any> = {
         offlinePushInfo: {},
-        cloudCustomData: JSON.stringify(_agentMeta),
       };
       const offlinePushInfoCreateParams: IOfflinePushInfoCreateParams = {
         conversation: currentConversation,

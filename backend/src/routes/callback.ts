@@ -73,6 +73,7 @@ router.post('/api/im/callback', callbackLimiter, async (req: Request, res: Respo
     let modelId = getUserModel(From_Account, '1');
     try {
       const cloudData = req.body.CloudCustomData;
+      log(`[CloudCustomData] raw=${cloudData || '(empty)'}`);
       if (cloudData) {
         const parsed = JSON.parse(cloudData);
         if (parsed.agentId) agentId = parsed.agentId;
