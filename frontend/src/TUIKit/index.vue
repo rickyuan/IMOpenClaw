@@ -1,5 +1,5 @@
 <template>
-  <div :key="currentLanguage">
+  <div :key="currentLanguage" style="height: 100%; overflow: hidden;">
     <slot>
       <div :class="['TUIKit', isH5 && 'TUIKit-h5']">
         <div

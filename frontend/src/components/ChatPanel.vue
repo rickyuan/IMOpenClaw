@@ -1,19 +1,31 @@
 <template>
-  <div class="chat-panel">
-    <div v-if="error" class="chat-error">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <p>{{ error }}</p>
-      <button @click="retry">Retry</button>
+  <div class="flex-1 overflow-hidden bg-bg-base relative">
+    <div
+      v-if="error"
+      class="flex flex-col items-center justify-center h-full gap-5 px-6"
+    >
+      <div class="w-14 h-14 rounded-2xl bg-error/10 flex items-center justify-center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-error">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <p class="text-sm text-text-secondary text-center max-w-xs leading-relaxed">{{ error }}</p>
+      <button
+        @click="retry"
+        class="px-8 py-2.5 bg-white/10 text-white border border-white/10 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 hover:bg-white/15 active:scale-95"
+      >
+        Retry
+      </button>
     </div>
-    <TUIKit
-      v-else
-      :SDKAppID="sdkAppId"
-      :userID="userId"
-      :userSig="userSig"
-      :conversationID="conversationID"
-    />
+    <!-- Absolute container to give TUIKit a fixed pixel height -->
+    <div v-else class="absolute inset-0 overflow-hidden">
+      <TUIKit
+        :SDKAppID="sdkAppId"
+        :userID="userId"
+        :userSig="userSig"
+        :conversationID="conversationID"
+      />
+    </div>
   </div>
 </template>
 
@@ -50,9 +62,7 @@ onMounted(() => {
     error.value = 'Missing credentials. Please check your configuration.';
     return;
   }
-  // Watch for SDK_READY signal: conversationList populates only after SDK is ready
   TUIStore.watch(StoreName.CONV, { conversationList: onConvListUpdate });
-  // Fallback retries in case watch fires too early
   [3000, 5000, 8000].forEach(d => setTimeout(switchToBot, d));
 });
 
@@ -65,42 +75,3 @@ function retry() {
   window.location.reload();
 }
 </script>
-
-<style scoped>
-.chat-panel {
-  flex: 1;
-  overflow: hidden;
-  background: var(--bg-base);
-}
-
-.chat-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 16px;
-  color: var(--error);
-}
-
-.chat-error p {
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-.chat-error button {
-  padding: 8px 24px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.chat-error button:hover {
-  background: var(--accent-dark);
-}
-
-</style>

@@ -1,108 +1,158 @@
 <template>
-  <header class="topnav">
-    <div class="brand">
-      <!-- Coffee icon for barista -->
-      <svg v-if="activeAgentId === 'barista'" class="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="8" fill="url(#grad-coffee)"/>
-        <path d="M9 12h10v9a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4v-9z" fill="#fff" opacity="0.9"/>
-        <path d="M19 14h2a2.5 2.5 0 0 1 0 5h-2" stroke="#fff" stroke-width="1.5" fill="none"/>
-        <path d="M12 10c0-1.5 1-2 1-3" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
-        <path d="M16 10c0-1.5 1-2 1-3" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
-        <defs>
-          <linearGradient id="grad-coffee" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#C67C4E"/><stop offset="1" stop-color="#8B5A2B"/>
-          </linearGradient>
-        </defs>
-      </svg>
-      <!-- Medical icon for medical -->
-      <svg v-else-if="activeAgentId === 'medical'" class="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="8" fill="url(#grad-medical)"/>
-        <rect x="14" y="8" width="4" height="16" rx="1" fill="#fff" opacity="0.9"/>
-        <rect x="8" y="14" width="16" height="4" rx="1" fill="#fff" opacity="0.9"/>
-        <defs>
-          <linearGradient id="grad-medical" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#2E86DE"/><stop offset="1" stop-color="#1B5E9E"/>
-          </linearGradient>
-        </defs>
-      </svg>
-      <!-- Airport icon for Changi -->
-      <svg v-else class="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="8" fill="url(#grad-airport)"/>
-        <path d="M22 17v-2l-8-5V5.5c0-.83-.67-1.5-1.5-1.5S11 4.67 11 5.5V10l-8 5v2l8-2.5V20l-2 1.5V23l3.5-1 3.5 1v-1.5L14 20v-5.5l8 2.5z" fill="#fff" opacity="0.95"/>
-        <defs>
-          <linearGradient id="grad-airport" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#6B21A8"/><stop offset="1" stop-color="#0EA5E9"/>
-          </linearGradient>
-        </defs>
-      </svg>
-      <div class="brand-text">
-        <span class="brand-name">{{ activeBrand.name }}</span>
-        <span class="brand-sub">{{ activeBrand.subtitle }}</span>
+  <header class="relative z-30 flex items-center justify-between px-4 py-2 shrink-0 sm:px-6 sm:py-2.5">
+    <!-- Left: Agent picker — web.dev: 48px min touch target -->
+    <button
+      @click="showAgentSheet = !showAgentSheet"
+      class="flex items-center gap-2.5 h-11 px-3 rounded-full bg-white/[0.06] border border-white/[0.08] transition-all duration-200 active:scale-95 hover:bg-white/[0.1]"
+    >
+      <div
+        class="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+        :style="{ background: agentGradient }"
+      >
+        <span v-if="activeAgentId === 'barista'" class="text-white" style="font-size: var(--text-xs, 12px)">&#9749;</span>
+        <span v-else-if="activeAgentId === 'medical'" class="text-white font-bold" style="font-size: var(--text-xs, 12px)">+</span>
+        <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="white">
+          <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+        </svg>
       </div>
-    </div>
+      <span class="font-medium text-text-primary truncate max-w-[100px]" style="font-size: var(--text-sm, 13px)">{{ activeBrand.name }}</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-text-muted shrink-0">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
 
-    <div class="mode-tabs">
+    <!-- Center: Mode toggle — web.dev: 48px combined height, 8px spacing between -->
+    <div class="flex bg-white/[0.06] border border-white/[0.08] rounded-full p-[3px]">
       <button
-        :class="['tab', modelValue === 'text' && 'active']"
+        :class="[
+          'flex items-center gap-1.5 px-4 py-2 rounded-full font-medium transition-all duration-200',
+          modelValue === 'text'
+            ? 'bg-white/15 text-white shadow-sm'
+            : 'text-text-muted hover:text-text-secondary'
+        ]"
+        style="font-size: var(--text-xs, 12px)"
         @click="$emit('update:modelValue', 'text')"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
-        Text Chat
+        <span class="hidden sm:inline">Text</span>
       </button>
       <button
-        :class="['tab', modelValue === 'voice' && 'active']"
+        :class="[
+          'flex items-center gap-1.5 px-4 py-2 rounded-full font-medium transition-all duration-200',
+          modelValue === 'voice'
+            ? 'bg-white/15 text-white shadow-sm'
+            : 'text-text-muted hover:text-text-secondary'
+        ]"
+        style="font-size: var(--text-xs, 12px)"
         @click="$emit('update:modelValue', 'voice')"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
           <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-          <line x1="12" y1="19" x2="12" y2="23"/>
-          <line x1="8" y1="23" x2="16" y2="23"/>
         </svg>
-        Voice Chat
+        <span class="hidden sm:inline">Voice</span>
       </button>
     </div>
 
-    <div class="controls">
-      <!-- Agent selector -->
-      <div v-if="agents.length > 1" class="agent-selector">
-        <div class="agent-tabs">
-          <button
-            v-for="a in agents"
-            :key="a.id"
-            :class="['agent-tab', activeAgentId === a.id && 'active', a.id]"
-            @click="onAgentChange(a.id)"
-          >
-            <span class="agent-icon">
-              <span v-if="a.id === 'barista'">&#9749;</span>
-              <span v-else-if="a.id === 'medical'">&#9764;</span>
-              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-              </svg>
-            </span>
-            {{ a.name }}
-          </button>
-        </div>
-      </div>
+    <!-- Right: Model & Settings — web.dev: 48px touch target -->
+    <button
+      @click="showSettings = !showSettings"
+      class="flex items-center justify-center w-11 h-11 rounded-full bg-white/[0.06] border border-white/[0.08] transition-all duration-200 active:scale-95 hover:bg-white/[0.1]"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-text-muted shrink-0">
+        <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>
+      </svg>
+    </button>
 
-      <div v-if="models.length > 0" class="model-selector">
-        <span class="model-label">Model</span>
-        <div class="select-wrap">
-          <select :value="activeModelId" @change="onModelChange">
-            <option v-for="m in models" :key="m.id" :value="m.id">{{ m.name }}</option>
-          </select>
-          <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
+    <!-- Agent picker bottom sheet -->
+    <Teleport to="body">
+      <Transition name="sheet">
+        <div v-if="showAgentSheet" class="fixed inset-0 z-50" @click="showAgentSheet = false">
+          <div class="absolute inset-0 bg-black/50" />
+          <div class="absolute bottom-0 left-0 right-0 bg-bg-surface rounded-t-3xl p-5 pb-8 sm:max-w-[400px] sm:mx-auto sm:mb-4 sm:rounded-3xl sm:bottom-auto sm:top-20 sm:left-1/2 sm:-translate-x-1/2" @click.stop>
+            <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5 sm:hidden" />
+            <h3 class="font-semibold text-text-primary mb-4" style="font-size: var(--text-lg, 16px)">Choose Scene</h3>
+            <div class="flex flex-col gap-2">
+              <!-- web.dev: each row is 48px+ touch target with 8px gap -->
+              <button
+                v-for="a in agents"
+                :key="a.id"
+                :class="[
+                  'flex items-center gap-3.5 p-3.5 min-h-[56px] rounded-2xl border transition-all duration-200 active:scale-[0.98]',
+                  activeAgentId === a.id
+                    ? 'border-white/15 bg-white/[0.08]'
+                    : 'border-transparent hover:bg-white/[0.04]'
+                ]"
+                @click="onAgentChange(a.id); showAgentSheet = false"
+              >
+                <div
+                  class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                  :style="{ background: getAgentGradient(a.id) }"
+                >
+                  <span v-if="a.id === 'barista'" class="text-white text-base">&#9749;</span>
+                  <span v-else-if="a.id === 'medical'" class="text-white font-bold text-base">+</span>
+                  <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="white">
+                    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                  </svg>
+                </div>
+                <div class="flex flex-col items-start gap-0.5 min-w-0">
+                  <span class="font-medium text-text-primary" style="font-size: var(--text-base, 14px)">{{ a.name }}</span>
+                  <span class="text-text-muted" style="font-size: var(--text-xs, 12px)">{{ a.subtitle }}</span>
+                </div>
+                <svg v-if="activeAgentId === a.id" class="ml-auto text-accent shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="user-badge">
-        <div class="avatar">{{ userInitial }}</div>
-        <span class="username">{{ userId }}</span>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Settings bottom sheet -->
+    <Teleport to="body">
+      <Transition name="sheet">
+        <div v-if="showSettings" class="fixed inset-0 z-50" @click="showSettings = false">
+          <div class="absolute inset-0 bg-black/50" />
+          <div class="absolute bottom-0 left-0 right-0 bg-bg-surface rounded-t-3xl p-5 pb-8 sm:max-w-[400px] sm:mx-auto sm:mb-4 sm:rounded-3xl sm:bottom-auto sm:top-20 sm:right-4 sm:left-auto sm:translate-x-0" @click.stop>
+            <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5 sm:hidden" />
+            <h3 class="text-base font-semibold text-text-primary mb-4">Model</h3>
+            <div class="flex flex-col gap-1.5">
+              <button
+                v-for="m in models"
+                :key="m.id"
+                :class="[
+                  'flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 active:scale-[0.98]',
+                  activeModelId === m.id
+                    ? 'border-white/15 bg-white/[0.08]'
+                    : 'border-transparent hover:bg-white/[0.04]'
+                ]"
+                @click="onModelChangeById(m.id)"
+              >
+                <div class="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-text-secondary">
+                    <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M10 12h.01"/>
+                  </svg>
+                </div>
+                <span class="text-sm text-text-primary">{{ m.name }}</span>
+                <svg v-if="activeModelId === m.id" class="ml-auto text-accent shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="mt-5 pt-4 border-t border-white/[0.06]">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center text-xs font-bold text-white shrink-0">{{ userInitial }}</div>
+                <span class="text-sm text-text-secondary">{{ userId }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </header>
 </template>
 
@@ -124,14 +174,29 @@ const models = ref<ModelInfo[]>([]);
 const activeModelId = ref('');
 const agents = ref<AgentInfo[]>([]);
 const activeAgentId = ref('barista');
+const showAgentSheet = ref(false);
+const showSettings = ref(false);
 
 const userInitial = computed(() => props.userId.charAt(0).toUpperCase());
+
+const activeModelName = computed(() => {
+  const m = models.value.find(m => m.id === activeModelId.value);
+  return m?.name || 'Model';
+});
 
 const activeBrand = computed(() => {
   const agent = agents.value.find(a => a.id === activeAgentId.value);
   if (agent) return { name: agent.name, subtitle: agent.subtitle };
   return { name: 'QuickCafe', subtitle: 'AI Barista Demo' };
 });
+
+function getAgentGradient(id: string) {
+  if (id === 'barista') return 'linear-gradient(135deg, #C67C4E, #8B5A2B)';
+  if (id === 'medical') return 'linear-gradient(135deg, #2E86DE, #1B5E9E)';
+  return 'linear-gradient(135deg, #7C3AED, #0EA5E9)';
+}
+
+const agentGradient = computed(() => getAgentGradient(activeAgentId.value));
 
 async function loadModels() {
   try {
@@ -153,8 +218,7 @@ async function loadAgents() {
   }
 }
 
-async function onModelChange(e: Event) {
-  const modelId = (e.target as HTMLSelectElement).value;
+async function onModelChangeById(modelId: string) {
   try {
     const result = await selectModel(props.userId, modelId);
     activeModelId.value = result.activeId;
@@ -180,284 +244,28 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.topnav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 56px;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  gap: 16px;
+<style>
+.sheet-enter-active,
+.sheet-leave-active {
+  transition: opacity 0.25s ease;
 }
-
-/* Brand */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+.sheet-enter-active > div:last-child,
+.sheet-leave-active > div:last-child {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
-
-.brand-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+.sheet-enter-from,
+.sheet-leave-to {
+  opacity: 0;
 }
-
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
+.sheet-enter-from > div:last-child,
+.sheet-leave-to > div:last-child {
+  transform: translateY(100%);
 }
-
-.brand-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.3px;
-}
-
-.brand-sub {
-  font-size: 10px;
-  color: var(--text-muted);
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-/* Mode tabs */
-.mode-tabs {
-  display: flex;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  gap: 2px;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border: none;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.tab:hover {
-  color: var(--text-primary);
-  background: rgba(0,0,0,0.05);
-}
-
-.tab.active {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 12px var(--accent-glow);
-}
-
-/* Controls */
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-shrink: 0;
-}
-
-/* Agent selector */
-.agent-tabs {
-  display: flex;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  gap: 2px;
-}
-
-.agent-tab {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.agent-tab:hover {
-  color: var(--text-primary);
-  background: rgba(0,0,0,0.05);
-}
-
-.agent-tab.active.barista {
-  background: linear-gradient(135deg, #C67C4E, #A0522D);
-  color: #fff;
-}
-
-.agent-tab.active.medical {
-  background: linear-gradient(135deg, #2E86DE, #1B5E9E);
-  color: #fff;
-}
-
-.agent-tab.active.airport {
-  background: linear-gradient(135deg, #6B21A8, #0EA5E9);
-  color: #fff;
-}
-
-.agent-icon {
-  font-size: 14px;
-}
-
-.model-selector {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.model-label {
-  font-size: 12px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 500;
-}
-
-.select-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.select-wrap select {
-  appearance: none;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  font-size: 13px;
-  padding: 5px 28px 5px 10px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.select-wrap select:hover,
-.select-wrap select:focus {
-  border-color: var(--accent);
-}
-
-.select-wrap select option {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-}
-
-.select-arrow {
-  position: absolute;
-  right: 8px;
-  pointer-events: none;
-  color: var(--text-muted);
-}
-
-/* User badge */
-.user-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.username {
-  font-size: 13px;
-  color: var(--text-secondary);
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Mobile H5 */
-@media (max-width: 640px) {
-  .topnav {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 8px 12px;
-    gap: 8px;
-  }
-
-  .brand {
-    order: 1;
-  }
-
-  .brand-text {
-    display: none;
-  }
-
-  .mode-tabs {
-    order: 2;
-  }
-
-  .tab {
-    padding: 5px 12px;
-    font-size: 12px;
-    gap: 4px;
-  }
-
-  .controls {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-    gap: 8px;
-    padding-top: 4px;
-    border-top: 1px solid var(--border);
-  }
-
-  .agent-tab {
-    padding: 4px 10px;
-    font-size: 11px;
-  }
-
-  .model-selector {
-    gap: 4px;
-  }
-
-  .model-label {
-    display: none;
-  }
-
-  .select-wrap select {
-    font-size: 12px;
-    padding: 4px 24px 4px 8px;
-  }
-
-  .user-badge .username {
-    display: none;
+@media (min-width: 640px) {
+  .sheet-enter-from > div:last-child,
+  .sheet-leave-to > div:last-child {
+    transform: translateY(-8px) scale(0.98);
+    opacity: 0;
   }
 }
 </style>

@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/app.ts",
     "build": "tsc",
-    "start": "node dist/app.js"
+    "start": "node dist/app.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.3.2",
     "google-auth-library": "^10.6.2",
     "tencentcloud-sdk-nodejs-trtc": "^4.1.193",
     "tls-sig-api-v2": "^1.0.2"
@@ -21,6 +24,7 @@
     "@types/node": "^22.10.0",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.2"
   }
 }

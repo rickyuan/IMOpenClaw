@@ -1,33 +1,69 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@import "tailwindcss";
+
+/* ─── Theme tokens ─── */
+@theme {
+  --color-accent: #C67C4E;
+  --color-accent-dark: #A0522D;
+  --color-accent-glow: rgba(198,124,78,0.35);
+  --color-bg-base: #0F0F14;
+  --color-bg-surface: #1A1A24;
+  --color-bg-elevated: #24243A;
+  --color-border-default: rgba(255,255,255,0.08);
+  --color-text-primary: #F0EDE8;
+  --color-text-secondary: #A8A0B8;
+  --color-text-muted: #6B6480;
+  --color-success: #3FB950;
+  --color-warning: #D29922;
+  --color-error: #f85149;
+  --color-medical: #2E86DE;
+  --color-medical-dark: #1B5E9E;
+  --color-airport: #7C3AED;
+  --color-airport-cyan: #0EA5E9;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
 }
 
 :root {
   --accent:       #C67C4E;
   --accent-dark:  #A0522D;
-  --accent-glow:  rgba(198,124,78,0.22);
-  --bg-base:      #FAF7F4;
-  --bg-surface:   #F3EDE7;
-  --bg-elevated:  #ffffff;
-  --border:       rgba(139,90,43,0.12);
-  --text-primary: #2C1810;
-  --text-secondary: #6B4F3A;
-  --text-muted:   #A08060;
+  --accent-glow:  rgba(198,124,78,0.35);
+  --bg-base:      #0F0F14;
+  --bg-surface:   #1A1A24;
+  --bg-elevated:  #24243A;
+  --border:       rgba(255,255,255,0.08);
+  --text-primary: #F0EDE8;
+  --text-secondary: #A8A0B8;
+  --text-muted:   #6B6480;
   --success:      #3FB950;
   --warning:      #D29922;
   --error:        #f85149;
-  --radius-sm:    6px;
-  --radius-md:    10px;
-  --radius-lg:    16px;
+  --radius-sm:    8px;
+  --radius-md:    12px;
+  --radius-lg:    20px;
+
+  /* ─── web.dev: Fluid typography scale using clamp() ─── */
+  --text-xs:   clamp(0.6875rem, 0.65rem + 0.15vw, 0.75rem);     /* 11-12px */
+  --text-sm:   clamp(0.75rem, 0.7rem + 0.2vw, 0.8125rem);       /* 12-13px */
+  --text-base: clamp(0.875rem, 0.825rem + 0.2vw, 0.9375rem);    /* 14-15px */
+  --text-lg:   clamp(1rem, 0.925rem + 0.3vw, 1.125rem);         /* 16-18px */
+  --text-xl:   clamp(1.25rem, 1.15rem + 0.4vw, 1.5rem);         /* 20-24px */
 }
 
 html, body, #app {
   height: 100%;
   width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #0F0F14;
+  color: #F0EDE8;
+  overflow: hidden;
+  /* web.dev: fluid base font size */
+  font-size: clamp(0.875rem, 0.825rem + 0.2vw, 1rem);
+  line-height: 1.5;
 }
 
 #app {
@@ -35,23 +71,335 @@ html, body, #app {
   flex-direction: column;
 }
 
-/* Mobile H5 safe area support */
+/* Safe area support — only top, bottom handled by individual panels */
 @supports (padding: env(safe-area-inset-top)) {
   #app {
     padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-/* Mobile H5 — TUIKit layout overrides */
-@media (max-width: 640px) {
-  .TUIKit {
-    width: 100% !important;
-    height: 100% !important;
-  }
+/* ─── TUIKit layout overrides ─── */
 
-  .TUIKit .TUIKit-main-aside {
-    min-width: 0 !important;
-    flex: 1 !important;
+/* Root: force 100% sizing (sample.scss changed from 100vh to 100%) */
+.TUIKit,
+.TUIKit.TUIKit-h5 {
+  width: 100% !important;
+  height: 100% !important;
+  flex-direction: column !important;
+}
+
+/* Hide navbar (Messages/Contacts tabs) — we have our own TopNav */
+.TUIKit .TUIKit-navbar {
+  display: none !important;
+}
+
+/* Hide sidebar (conversation list) — single bot conversation */
+.TUIKit .TUIKit-main-aside {
+  display: none !important;
+}
+
+/* Hide chat header — redundant with our TopNav */
+.TUIKit .tui-chat-header,
+.TUIKit .tui-chat-H5-header {
+  display: none !important;
+}
+
+/* Ensure every layer in the flex chain fills its parent */
+.TUIKit .TUIKit-main-container {
+  flex: 1 !important;
+  display: flex !important;
+  overflow: hidden !important;
+}
+
+.TUIKit .TUIKit-main {
+  flex: 1 !important;
+  display: flex !important;
+  overflow: hidden !important;
+}
+
+.TUIKit .TUIKit-main-main {
+  flex: 1 !important;
+  display: flex !important;
+  overflow: hidden !important;
+}
+
+/* .chat wrapper: must be flex to pass height down */
+.TUIKit .chat {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  height: 100% !important;
+}
+
+/* Outer .tui-chat: flex column, fill parent */
+.TUIKit .chat > .tui-chat,
+.TUIKit .chat > .tui-chat-h5 {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  height: auto !important;
+}
+
+/* Inner nested .tui-chat (the actual chat content): must flex-fill parent */
+.TUIKit .chat > .tui-chat > .tui-chat,
+.TUIKit .chat > .tui-chat-h5 > .tui-chat-h5,
+.TUIKit .chat > .tui-chat > .tui-chat-h5,
+.TUIKit .chat > .tui-chat-h5 > .tui-chat {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* Message list fills available space */
+.TUIKit .tui-chat-message-list,
+.TUIKit .tui-chat-h5-message-list {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Message input bar — compact single-row layout */
+.TUIKit .tui-chat-message-input,
+.TUIKit .tui-chat-h5-message-input {
+  flex-shrink: 0 !important;
+  display: flex !important;
+  height: auto !important;
+  /* web.dev: 12-16px padding, safe-area aware */
+  padding: 10px 16px !important;
+  padding-bottom: max(10px, calc(6px + env(safe-area-inset-bottom, 0px))) !important;
+  border-top: 1px solid rgba(255,255,255,0.08) !important;
+  background: rgba(15, 15, 20, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.TUIKit .message-input-wrapper {
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+}
+
+.TUIKit .message-input-container {
+  flex: 1 !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+  min-height: 36px !important;
+}
+
+.TUIKit .message-input-editor-container {
+  flex: 1 !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  background: rgba(255,255,255,0.08) !important;
+  border-radius: 18px !important;
+  padding: 6px 14px !important;
+  min-height: 36px !important;
+  box-sizing: border-box !important;
+}
+
+.TUIKit .message-input-editor-area {
+  flex: 1 !important;
+  min-height: 22px !important;
+  max-height: 80px !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  color: #F0EDE8 !important;
+  /* web.dev: fluid font, unitless line-height */
+  font-size: var(--text-base, 15px) !important;
+  line-height: 1.45 !important;
+}
+
+.TUIKit .message-input-button {
+  position: static !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  padding: 0 !important;
+  /* web.dev: 8px spacing from adjacent elements */
+  margin-left: 8px !important;
+}
+
+.TUIKit .message-input-button-cont {
+  /* web.dev: 48px minimum touch target */
+  height: 40px !important;
+  min-width: 48px !important;
+  padding: 0 20px !important;
+  border-radius: 20px !important;
+  background: #3478F6 !important;
+  color: white !important;
+  font-size: var(--text-base, 15px) !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  border: none !important;
+  transition: background 0.15s ease, transform 0.1s ease !important;
+}
+
+.TUIKit .message-input-button-cont:active {
+  transform: scale(0.96) !important;
+  background: #2860D0 !important;
+}
+
+/* Hide the tooltip hover text */
+.TUIKit .message-input-button-hover {
+  display: none !important;
+}
+
+/* Toolbar (emoji/file icons) — compact row */
+.TUIKit .tui-chat-message-input-toolbar,
+.TUIKit .tui-chat-h5-message-input-toolbar {
+  flex-shrink: 0 !important;
+  padding: 4px 12px !important;
+  border-top: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* Quote message area */
+.TUIKit .message-input-quote {
+  padding: 4px 12px !important;
+}
+
+/* ─── Message avatar & bubble differentiation ─── */
+
+/* Hide default avatar images, use colored circles instead */
+.TUIKit .avatar-image {
+  visibility: hidden !important;
+}
+
+.TUIKit .avatar-container {
+  position: relative !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Add initials via pseudo-element */
+.TUIKit .avatar-container::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: white !important;
+  border-radius: 50% !important;
+}
+
+/* User avatar (outgoing messages) — warm accent gradient */
+.message-bubble:has(.content-out) .avatar-container::after {
+  content: 'U' !important;
+  background: linear-gradient(135deg, #C67C4E, #8B5A2B) !important;
+}
+
+/* Bot avatar (incoming messages) — cool blue gradient */
+.message-bubble:has(.content-in) .avatar-container::after {
+  content: 'AI' !important;
+  font-size: 10px !important;
+  letter-spacing: 0.5px !important;
+  background: linear-gradient(135deg, #3478F6, #1B5E9E) !important;
+}
+
+/* User message bubble — darker accent with right alignment */
+.TUIKit .content-out {
+  background: rgba(198, 124, 78, 0.2) !important;
+  border: 1px solid rgba(198, 124, 78, 0.15) !important;
+  border-radius: 18px 4px 18px 18px !important;
+  color: #F0EDE8 !important;
+  padding: 10px 16px !important;
+}
+
+/* Bot message bubble — glass surface */
+.TUIKit .content-in {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 4px 18px 18px 18px !important;
+  color: #F0EDE8 !important;
+  padding: 10px 16px !important;
+}
+
+/* Bubble max-width: let TUIKit's flex layout handle width naturally,
+   only cap at 75vw to prevent overly long lines on wide screens */
+.TUIKit .message-body {
+  max-width: min(75ch, 75vw) !important;
+}
+
+/* Text color inside bubbles — web.dev: 4.5:1 contrast ratio for body text */
+.TUIKit .content-out .text,
+.TUIKit .content-out .message-text-container {
+  color: #F0EDE8 !important;
+  font-size: var(--text-base, 15px) !important;
+  line-height: 1.5 !important;
+}
+
+.TUIKit .content-in .text,
+.TUIKit .content-in .message-text-container {
+  color: #E0DCD6 !important;
+  font-size: var(--text-base, 15px) !important;
+  line-height: 1.5 !important;
+}
+
+/* Fix word-break: TUIKit uses break-all which splits "you" into "y/ou" */
+.TUIKit .message-body-content {
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Typing indicator / streaming loader — dark theme */
+.TUIKit .message-typewriter {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-radius: 4px 18px 18px 18px !important;
+  padding: 12px 16px !important;
+  color: #E0DCD6 !important;
+}
+
+/* Loading dots — match dark theme */
+.TUIKit .loader {
+  --_g: no-repeat radial-gradient(circle closest-side, rgba(255,255,255,0.5) 90%, transparent) !important;
+}
+
+/* Stream markdown text color */
+.TUIKit .message-stream,
+.TUIKit .message-marked {
+  color: #E0DCD6 !important;
+}
+
+/* Timestamp text */
+.TUIKit .message-timestamp {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Unread label */
+.TUIKit .message-label {
+  color: rgba(255, 255, 255, 0.25) !important;
+  font-size: 11px !important;
+}
+
+/* Backdrop blur support */
+@supports (backdrop-filter: blur(1px)) {
+  .glass-bg {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
+}
+
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
 }

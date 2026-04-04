@@ -2,11 +2,12 @@ import { Router, Request, Response } from 'express';
 import { generateUserSig } from '../services/usersig';
 import { startVoiceAI, stopVoiceAI, describeVoiceAI } from '../services/trtc-ai';
 import { sendBotMessage, sendBotCustomMessage } from '../services/chat-api';
-import { getUserAgent } from '../services/openclaw';
+import { getUserAgent } from '../state/user-preferences';
+import { voiceStartLimiter } from '../middleware/rate-limit';
 
 const router = Router();
 
-router.post('/api/voice/start', async (req: Request, res: Response) => {
+router.post('/api/voice/start', voiceStartLimiter, async (req: Request, res: Response) => {
   try {
     const { roomId, userId } = req.body;
 
@@ -16,7 +17,7 @@ router.post('/api/voice/start', async (req: Request, res: Response) => {
     }
 
     const userSig = generateUserSig(userId);
-    const agentId = getUserAgent(userId);
+    const agentId = getUserAgent(userId, 'barista');
     const taskId = await startVoiceAI(roomId, userId);
 
     res.json({

@@ -1,143 +1,191 @@
 <template>
-  <div class="voice-panel">
-    <!-- Status ring -->
-    <div class="status-section">
-      <div :class="['ring-wrap', aiState, agentId]">
-        <div class="ring ring-3" />
-        <div class="ring ring-2" />
-        <div class="ring ring-1" />
-        <div class="orb">
-          <svg v-if="!isActive" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <div class="relative flex flex-1 flex-col overflow-hidden">
+    <!-- Subtle ambient glow -->
+    <div class="absolute inset-0 transition-all duration-1000" :style="{ background: ambientGradient }" />
+
+    <div class="relative z-10 flex flex-1 flex-col overflow-hidden">
+
+      <!-- ── Status bar: 56px, 16px margins (HIG), 48px touch targets (web.dev) ── -->
+      <div class="shrink-0 flex items-center border-b border-white/[0.06] bg-white/[0.02]" style="height: 56px; padding: 0 16px">
+        <!-- Agent orb + status -->
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="relative shrink-0">
+            <div
+              v-if="isActive && (aiState === 'listening' || aiState === 'speaking')"
+              class="absolute -inset-2 rounded-full animate-orb-ring"
+              :style="{ background: `radial-gradient(circle, ${orbGlowColor} 0%, transparent 70%)` }"
+            />
+            <div
+              class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
+              :class="[
+                isActive && aiState === 'listening' ? 'animate-orb-breathe' :
+                isActive && aiState === 'speaking' ? 'animate-orb-speak' :
+                isActive && aiState === 'thinking' ? 'animate-orb-think' : '',
+              ]"
+              :style="{ background: orbBackground }"
+            >
+              <div v-if="isActive && (aiState === 'listening' || aiState === 'speaking')" class="flex items-center gap-[2px]">
+                <div v-for="n in 3" :key="n" class="w-[2px] bg-white/90 rounded-full animate-wave-bar" :style="{ height: `${6 + Math.random() * 8}px`, animationDelay: `${n * 0.12}s` }" />
+              </div>
+              <div v-else-if="isActive && aiState === 'thinking'" class="flex items-center gap-[3px]">
+                <div v-for="n in 3" :key="n" class="w-1 h-1 bg-white/70 rounded-full animate-think-dot" :style="{ animationDelay: `${n * 0.15}s` }" />
+              </div>
+              <span v-else class="text-white text-[13px] font-bold">{{ botInitial }}</span>
+            </div>
+          </div>
+          <div class="flex flex-col min-w-0 gap-0.5">
+            <span class="font-semibold text-white/90 truncate" style="font-size: var(--text-base, 15px)">{{ botName }}</span>
+            <span class="leading-tight" :class="isActive ? 'text-white/50' : 'text-white/35'" style="font-size: var(--text-xs, 11px)">{{ statusLabel }}</span>
+          </div>
+        </div>
+        <!-- End button: 48px touch target (web.dev minimum), 8px spacing -->
+        <button
+          v-if="isActive"
+          @click="stop"
+          class="ml-auto flex items-center justify-center h-12 min-w-[48px] px-4 -mr-1 rounded-xl font-medium text-red-400/90 transition-all active:scale-95 active:bg-white/[0.04]"
+          style="font-size: var(--text-sm, 13px)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="mr-1.5"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          End
+        </button>
+      </div>
+
+      <!-- ── Conversation: flex-1 fills remaining space ── -->
+      <div
+        ref="conversationArea"
+        class="flex-1 min-h-0 overflow-y-auto custom-scrollbar"
+      >
+        <!-- Empty state: centered, generous padding, fluid text (web.dev) -->
+        <div v-if="entries.length === 0 && !isActive" class="flex flex-col items-center justify-center h-full" style="padding: 0 32px">
+          <div
+            class="w-20 h-20 rounded-[22px] flex items-center justify-center mb-6 shadow-lg"
+            :style="{ background: orbBackground }"
+          >
+            <svg class="w-9 h-9 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+          </div>
+          <p class="font-semibold text-white/70 text-center mb-1.5" style="font-size: var(--text-lg, 17px)">{{ botName }}</p>
+          <!-- web.dev: max-inline-size with ch for ideal line length (45-75 chars) -->
+          <p class="text-white/35 text-center leading-relaxed" style="font-size: var(--text-sm, 13px); max-inline-size: 36ch">{{
+            agentId === 'medical' ? 'Your AI healthcare assistant. Tap below to start a voice consultation.' :
+            agentId === 'airport' ? 'Your Changi Airport guide. Ask about flights, transport, or dining.' :
+            'Your AI barista. Start a voice order and Bella will help you pick a drink.'
+          }}</p>
+        </div>
+
+        <!-- Messages: 16px margins (HIG), max-width (MD3), fluid text (web.dev) -->
+        <div v-else class="flex flex-col sm:max-w-[600px] sm:mx-auto" style="gap: 4px; padding: 16px 16px">
+          <template v-for="(entry, i) in entries" :key="i">
+            <!-- Message -->
+            <div v-if="entry.type === 'message'">
+              <!-- Sender change = extra spacing for visual grouping -->
+              <div
+                v-if="i > 0 && (entries[i-1]?.type !== 'message' || (entries[i-1] as any)?.role !== entry.role)"
+                style="height: 12px"
+              />
+              <!-- Show sender label only when sender changes -->
+              <div
+                v-if="i === 0 || (entries[i-1]?.type === 'message' && (entries[i-1] as any)?.role !== entry.role) || entries[i-1]?.type !== 'message'"
+                :class="entry.role === 'user' ? 'flex items-center justify-end' : 'flex items-center'"
+                style="gap: 8px; margin-bottom: 6px"
+              >
+                <!-- Avatar: 30px -->
+                <div
+                  v-if="entry.role !== 'user'"
+                  class="rounded-full flex items-center justify-center font-bold text-white shrink-0"
+                  :style="{ width: '30px', height: '30px', background: orbBackground, fontSize: '11px' }"
+                >
+                  {{ botInitial }}
+                </div>
+                <span class="font-medium text-white/40" style="font-size: 11px">{{ entry.role === 'user' ? 'You' : botName }}</span>
+                <div
+                  v-if="entry.role === 'user'"
+                  class="rounded-full flex items-center justify-center font-bold text-white shrink-0"
+                  :style="{ width: '30px', height: '30px', background: 'linear-gradient(135deg, #C67C4E, #8B5A2B)', fontSize: '11px' }"
+                >
+                  U
+                </div>
+              </div>
+              <!-- Bubble: constrained width, proper alignment -->
+              <div :class="['flex', entry.role === 'user' ? 'justify-end' : '']">
+                <div
+                  :style="{
+                    fontSize: 'var(--text-base, 15px)',
+                    lineHeight: '1.5',
+                    maxWidth: 'min(42ch, 75%)',
+                    padding: '10px 16px',
+                    borderRadius: entry.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
+                    background: entry.role === 'user' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)',
+                    color: entry.role === 'user' ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.8)',
+                  }"
+                >
+                  {{ entry.text }}
+                  <span v-if="entry.active" class="ml-1 inline-block w-1.5 h-1.5 bg-white/50 rounded-full animate-pulse align-middle" />
+                </div>
+              </div>
+            </div>
+            <!-- Card: aligned with bot messages -->
+            <div v-else style="padding: 8px 0; margin-right: 16px">
+              <component
+                :is="getCardComponent(entry.type)"
+                v-bind="getCardProps(entry.type)"
+                v-if="getCardComponent(entry.type)"
+              />
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ── Bottom: Start button or error ── -->
+      <div
+        class="shrink-0 w-full flex flex-col items-center"
+        style="gap: 12px; padding: 16px 16px max(1.25rem, calc(0.75rem + env(safe-area-inset-bottom, 0px)))"
+      >
+        <div v-if="errorMsg" class="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/10 max-w-[340px]" style="font-size: var(--text-sm, 13px)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 text-red-400">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span class="text-red-400">{{ errorMsg }}</span>
+        </div>
+        <!-- Start: 52px height (above 48px web.dev minimum), full-width on mobile -->
+        <button
+          v-if="!isActive"
+          @click="start"
+          :disabled="isLoading"
+          class="flex items-center justify-center gap-2.5 w-full max-w-[340px] h-[52px] rounded-2xl font-semibold text-white shadow-lg transition-all duration-200 active:scale-[0.97] disabled:opacity-40"
+          :style="{ background: orbBackground, fontSize: 'var(--text-base, 15px)' }"
+        >
+          <svg v-if="!isLoading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
           </svg>
-          <svg v-else-if="aiState === 'thinking'" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-          </svg>
-          <svg v-else-if="aiState === 'speaking'" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          </svg>
-          <svg v-else width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-          </svg>
-        </div>
+          <div v-else class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          {{ isLoading ? 'Connecting...' : startButtonLabel }}
+        </button>
       </div>
-      <div class="status-label">{{ statusLabel }}</div>
-    </div>
-
-    <!-- Conversation (messages + inline cards) -->
-    <div class="conversation-section">
-      <div class="conversation-header">
-        <span class="conversation-title">Conversation</span>
-        <span v-if="entries.length > 0" class="conversation-count">{{ messageCount }} messages</span>
-      </div>
-      <div class="conversation-body" ref="conversationArea">
-        <div v-if="entries.length === 0" class="conversation-empty">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3">
-            <template v-if="agentId === 'medical'">
-              <rect x="14" y="8" width="4" height="16" rx="1" transform="translate(0,-4)"/>
-              <rect x="8" y="10" width="16" height="4" rx="1" transform="translate(-4,0)"/>
-            </template>
-            <template v-else-if="agentId === 'airport'">
-              <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-            </template>
-            <template v-else>
-              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-            </template>
-          </svg>
-          <span>{{
-            agentId === 'medical' ? 'Start a voice chat to book a consultation with Ava' :
-            agentId === 'airport' ? 'Chat with ARIA — ask about flights, transport, Jewel & more' :
-            'Start a voice chat to order coffee with Bella'
-          }}</span>
-        </div>
-        <template v-for="(entry, i) in entries" :key="i">
-          <!-- Text message -->
-          <div v-if="entry.type === 'message'" :class="['message', entry.role, entry.active && 'streaming']">
-            <div class="message-avatar">{{ entry.role === 'user' ? 'U' : botInitial }}</div>
-            <div class="message-bubble">{{ entry.text }}</div>
-          </div>
-          <!-- Barista cards -->
-          <div v-else-if="entry.type === 'menu_card'" class="card-entry">
-            <MenuCard />
-          </div>
-          <div v-else-if="entry.type === 'order_card'" class="card-entry">
-            <OrderCard :order="orderData" />
-          </div>
-          <div v-else-if="entry.type === 'confirmation_card'" class="card-entry">
-            <ConfirmationCard :confirmation="confirmationData" />
-          </div>
-          <!-- Medical cards -->
-          <div v-else-if="entry.type === 'service_menu_card'" class="card-entry">
-            <ServiceMenuCard :services="serviceMenuData.services" />
-          </div>
-          <div v-else-if="entry.type === 'doctor_list_card'" class="card-entry">
-            <DoctorListCard :doctors="doctorListData.doctors" />
-          </div>
-          <div v-else-if="entry.type === 'appointment_card'" class="card-entry">
-            <AppointmentCard :appointment="appointmentData" />
-          </div>
-          <!-- Airport cards -->
-          <div v-else-if="entry.type === 'flight_status_card'" class="card-entry">
-            <FlightStatusCard :flight="flightData" />
-          </div>
-          <div v-else-if="entry.type === 'transport_card'" class="card-entry">
-            <TransportCard :data="transportData" />
-          </div>
-          <div v-else-if="entry.type === 'jewel_card'" class="card-entry">
-            <JewelCard :data="jewelData" />
-          </div>
-          <div v-else-if="entry.type === 'dining_card'" class="card-entry">
-            <TerminalDiningCard :data="diningData" />
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <!-- Controls -->
-    <div class="controls-section">
-      <div v-if="errorMsg" class="error-banner">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        {{ errorMsg }}
-      </div>
-      <button v-if="!isActive" @click="start" :disabled="isLoading" class="btn-start">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-          <line x1="12" y1="19" x2="12" y2="23"/>
-          <line x1="8" y1="23" x2="16" y2="23"/>
-        </svg>
-        {{ isLoading ? 'Connecting...' : startButtonLabel }}
-      </button>
-      <button v-else @click="stop" class="btn-stop">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-        </svg>
-        End Conversation
-      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, defineAsyncComponent, type Component } from 'vue';
 import { startVoiceMode, stopVoiceMode } from '../services/trtc';
 import { fetchAgents } from '../services/api';
-import MenuCard from './cards/MenuCard.vue';
-import OrderCard from './cards/OrderCard.vue';
-import ConfirmationCard from './cards/ConfirmationCard.vue';
-import ServiceMenuCard from './cards/ServiceMenuCard.vue';
-import DoctorListCard from './cards/DoctorListCard.vue';
-import AppointmentCard from './cards/AppointmentCard.vue';
-import FlightStatusCard from './cards/FlightStatusCard.vue';
-import TransportCard from './cards/TransportCard.vue';
-import JewelCard from './cards/JewelCard.vue';
-import TerminalDiningCard from './cards/TerminalDiningCard.vue';
+
+// Lazy-load card components
+const MenuCard = defineAsyncComponent(() => import('./cards/MenuCard.vue'));
+const OrderCard = defineAsyncComponent(() => import('./cards/OrderCard.vue'));
+const ConfirmationCard = defineAsyncComponent(() => import('./cards/ConfirmationCard.vue'));
+const ServiceMenuCard = defineAsyncComponent(() => import('./cards/ServiceMenuCard.vue'));
+const DoctorListCard = defineAsyncComponent(() => import('./cards/DoctorListCard.vue'));
+const AppointmentCard = defineAsyncComponent(() => import('./cards/AppointmentCard.vue'));
+const FlightStatusCard = defineAsyncComponent(() => import('./cards/FlightStatusCard.vue'));
+const TransportCard = defineAsyncComponent(() => import('./cards/TransportCard.vue'));
+const JewelCard = defineAsyncComponent(() => import('./cards/JewelCard.vue'));
+const TerminalDiningCard = defineAsyncComponent(() => import('./cards/TerminalDiningCard.vue'));
 
 type Entry =
   | { type: 'message'; text: string; role: string; active: boolean }
@@ -162,7 +210,6 @@ const entries = ref<Entry[]>([]);
 const conversationArea = ref<HTMLElement | null>(null);
 const agentId = ref<'barista' | 'medical' | 'airport'>('barista');
 
-// Track which cards have been shown
 const shownCards = reactive({
   menu: false, order: false, confirmation: false,
   serviceMenu: false, doctorList: false, appointment: false,
@@ -170,22 +217,39 @@ const shownCards = reactive({
 });
 
 const conversationText = ref<string[]>([]);
+const orbSize = computed(() => (aiState.value === 'speaking' ? 'lg' : 'md'));
 
-const messageCount = computed(() => entries.value.filter(e => e.type === 'message').length);
-
-const botInitial = computed(() => {
-  if (agentId.value === 'medical') return 'A';
-  if (agentId.value === 'airport') return '✈';
-  return 'B';
+// ─── Theme-aware computed styles ───
+const orbBackground = computed(() => {
+  if (agentId.value === 'medical') return 'linear-gradient(135deg, #2E86DE, #1B5E9E)';
+  if (agentId.value === 'airport') return 'linear-gradient(135deg, #7C3AED, #0EA5E9)';
+  return 'linear-gradient(135deg, #C67C4E, #8B5A2B)';
 });
 
+const orbGlowColor = computed(() => {
+  if (agentId.value === 'medical') return 'rgba(46,134,222,0.15)';
+  if (agentId.value === 'airport') return 'rgba(124,58,237,0.15)';
+  return 'rgba(198,124,78,0.15)';
+});
+
+const ambientGradient = computed(() => {
+  if (!isActive.value) return 'radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.02) 0%, transparent 70%)';
+  if (agentId.value === 'medical') return 'radial-gradient(ellipse at 50% 30%, rgba(46,134,222,0.06) 0%, transparent 60%)';
+  if (agentId.value === 'airport') return 'radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.06) 0%, transparent 60%)';
+  return 'radial-gradient(ellipse at 50% 30%, rgba(198,124,78,0.06) 0%, transparent 60%)';
+});
+
+const botInitial = computed(() => agentId.value === 'medical' ? 'A' : agentId.value === 'airport' ? 'R' : 'B');
+const botName = computed(() => agentId.value === 'medical' ? 'Ava' : agentId.value === 'airport' ? 'ARIA' : 'Bella');
+
 const startButtonLabel = computed(() => {
-  if (agentId.value === 'medical') return 'Start Voice Consultation';
+  if (agentId.value === 'medical') return 'Start Consultation';
   if (agentId.value === 'airport') return 'Chat with ARIA';
   return 'Start Voice Order';
 });
 
 const statusLabel = computed(() => {
+  if (isLoading.value) return 'Connecting...';
   if (!isActive.value) {
     if (agentId.value === 'medical') return 'Ready to consult';
     if (agentId.value === 'airport') return 'ARIA ready to assist';
@@ -201,6 +265,38 @@ const statusLabel = computed(() => {
   };
   return labels[aiState.value] || 'Connected';
 });
+
+// ─── Card component mapping ───
+function getCardComponent(type: string): Component | null {
+  const map: Record<string, Component> = {
+    menu_card: MenuCard,
+    order_card: OrderCard,
+    confirmation_card: ConfirmationCard,
+    service_menu_card: ServiceMenuCard,
+    doctor_list_card: DoctorListCard,
+    appointment_card: AppointmentCard,
+    flight_status_card: FlightStatusCard,
+    transport_card: TransportCard,
+    jewel_card: JewelCard,
+    dining_card: TerminalDiningCard,
+  };
+  return map[type] || null;
+}
+
+function getCardProps(type: string): Record<string, any> {
+  const propsMap: Record<string, Record<string, any>> = {
+    order_card: { order: orderData },
+    confirmation_card: { confirmation: confirmationData },
+    service_menu_card: { services: serviceMenuData.services },
+    doctor_list_card: { doctors: doctorListData.doctors },
+    appointment_card: { appointment: appointmentData },
+    flight_status_card: { flight: flightData },
+    transport_card: { data: transportData },
+    jewel_card: { data: jewelData },
+    dining_card: { data: diningData },
+  };
+  return propsMap[type] || {};
+}
 
 // ─── Barista data ───
 const orderData = reactive({
@@ -235,7 +331,7 @@ const appointmentData = reactive({
   confirmationNo: 'DA-000000',
 });
 
-// ─── Airport (ARIA) data ───
+// ─── Airport data ───
 const DEMO_FLIGHTS = [
   { flightNo: 'SQ 321', airline: 'Singapore Airlines', airlineCode: 'SQ', origin: 'Singapore (SIN)', destination: 'London (LHR)', terminal: 'T3', gate: 'C23', status: 'On Time', departure: '14:30', arrival: '21:25+1', checkInCloses: '12:30' },
   { flightNo: 'CX 759', airline: 'Cathay Pacific', airlineCode: 'CX', origin: 'Singapore (SIN)', destination: 'Hong Kong (HKG)', terminal: 'T4', gate: 'A12', status: 'Boarding', departure: '13:45', arrival: '17:40', checkInCloses: '12:45' },
@@ -270,7 +366,7 @@ const diningData = reactive({
   restaurants: [
     { name: 'Shake Shack', cuisine: 'American Burgers', location: 'T3, Level 1', hours: '6am–12am', priceRange: 'S$12–22' },
     { name: 'Din Tai Fung', cuisine: 'Taiwanese Dim Sum', location: 'Jewel, Level 2', hours: '10am–10pm', priceRange: 'S$18–35' },
-    { name: 'PAUL Bakery', cuisine: 'French Café & Pastries', location: 'T3, Level 2', hours: '24 hours', priceRange: 'S$8–18' },
+    { name: 'PAUL Bakery', cuisine: 'French Cafe & Pastries', location: 'T3, Level 2', hours: '24 hours', priceRange: 'S$8–18' },
     { name: 'Poulet', cuisine: 'French Comfort Food', location: 'T3, Level 2', hours: '10am–10pm', priceRange: 'S$15–28' },
     { name: 'A&W', cuisine: 'Singapore Nostalgia', location: 'T3, Level B2', hours: '24 hours', priceRange: 'S$6–12' },
   ],
@@ -354,8 +450,7 @@ function extractBaristaOrder(allText: string) {
 
 function extractMedicalAppt(allText: string) {
   const lower = allText.toLowerCase();
-  const doctors = doctorListData.doctors;
-  for (const doc of doctors) {
+  for (const doc of doctorListData.doctors) {
     if (lower.includes(doc.name.toLowerCase())) {
       appointmentData.doctor = doc.name;
       appointmentData.specialty = doc.specialty;
@@ -435,7 +530,7 @@ async function loadAgent() {
 onMounted(() => {
   window.addEventListener('voice-subtitle', onSubtitle);
   window.addEventListener('voice-state', onState);
-  window.addEventListener('agent-changed', ((e: CustomEvent) => { agentId.value = e.detail as 'barista' | 'medical'; }) as EventListener);
+  window.addEventListener('agent-changed', ((e: CustomEvent) => { agentId.value = e.detail as 'barista' | 'medical' | 'airport'; }) as EventListener);
   loadAgent();
 });
 
@@ -469,7 +564,6 @@ async function start() {
   try {
     const roomId = `voice_${props.userId}_${Date.now()}`;
     const result = await startVoiceMode(roomId, props.userId);
-    // Backend returns agent context
     if (result.agentId) agentId.value = result.agentId;
     isActive.value = true;
     aiState.value = 'idle';
@@ -480,7 +574,6 @@ async function start() {
         entries.value.push({ type: 'message', text: welcome.text, role: 'assistant', active: false });
       }
       if (agentId.value === 'airport') {
-        // No initial card for airport — ARIA shows cards contextually
         scrollToBottom();
         return;
       }
@@ -505,381 +598,57 @@ async function stop() {
 }
 </script>
 
-<style scoped>
-.voice-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 24px 24px 20px;
-  gap: 20px;
-  overflow: hidden;
-  background: var(--bg-base);
-}
-
-/* Status ring */
-.status-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.ring-wrap {
-  position: relative;
-  width: 100px;
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid var(--accent);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.ring-1 { width: 100px; height: 100px; }
-.ring-2 { width: 80px;  height: 80px; }
-.ring-3 { width: 62px;  height: 62px; }
-
-/* Medical agent uses blue rings */
-.ring-wrap.medical .ring {
-  border-color: #2E86DE;
-}
-
-/* Airport agent uses purple rings */
-.ring-wrap.airport .ring {
-  border-color: #7C3AED;
-}
-
-.ring-wrap.listening .ring,
-.ring-wrap.speaking .ring {
-  opacity: 0.15;
-  animation: ripple 2s ease-out infinite;
-}
-.ring-wrap.listening .ring-2,
-.ring-wrap.speaking .ring-2 { animation-delay: 0.4s; }
-.ring-wrap.listening .ring-3,
-.ring-wrap.speaking .ring-3 { animation-delay: 0.8s; }
-
-@keyframes ripple {
-  0%   { transform: scale(0.85); opacity: 0.2; }
-  50%  { opacity: 0.12; }
-  100% { transform: scale(1.05); opacity: 0; }
-}
-
-.orb {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  transition: all 0.3s;
-  position: relative;
-  z-index: 1;
-}
-
-.ring-wrap.listening .orb {
-  background: rgba(198,124,78,0.1);
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 24px var(--accent-glow);
-}
-.ring-wrap.medical.listening .orb {
-  background: rgba(46,134,222,0.1);
-  border-color: #2E86DE;
-  color: #2E86DE;
-  box-shadow: 0 0 24px rgba(46,134,222,0.25);
-}
-.ring-wrap.airport.listening .orb {
-  background: rgba(124,58,237,0.1);
-  border-color: #7C3AED;
-  color: #7C3AED;
-  box-shadow: 0 0 24px rgba(124,58,237,0.25);
-}
-.ring-wrap.thinking .orb {
-  background: rgba(210,153,34,0.1);
-  border-color: var(--warning);
-  color: var(--warning);
-  box-shadow: 0 0 24px rgba(210,153,34,0.2);
-  animation: pulse-think 1s ease-in-out infinite;
-}
-.ring-wrap.speaking .orb {
-  background: rgba(63,185,80,0.1);
-  border-color: var(--success);
-  color: var(--success);
-  box-shadow: 0 0 24px rgba(63,185,80,0.2);
-}
-
-@keyframes pulse-think {
+<style>
+@keyframes orb-breathe {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  50%      { transform: scale(1.08); }
 }
 
-.status-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.3px;
-  height: 18px;
+@keyframes orb-think {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25%      { transform: scale(0.95) rotate(2deg); }
+  50%      { transform: scale(1.02) rotate(0deg); }
+  75%      { transform: scale(0.97) rotate(-2deg); }
 }
 
-/* Conversation */
-.conversation-section {
-  flex: 1;
-  width: 100%;
-  max-width: 560px;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  min-height: 0;
+@keyframes orb-speak {
+  0%, 100% { transform: scale(1); }
+  25%      { transform: scale(1.06); }
+  50%      { transform: scale(0.97); }
+  75%      { transform: scale(1.04); }
 }
 
-.conversation-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+@keyframes orb-ring {
+  0%   { transform: scale(0.8); opacity: 0.4; }
+  100% { transform: scale(1.3); opacity: 0; }
 }
 
-.conversation-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
+@keyframes wave-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50%      { transform: scaleY(1); }
 }
 
-.conversation-count {
-  font-size: 11px;
-  color: var(--text-muted);
-  background: var(--bg-elevated);
-  padding: 2px 8px;
-  border-radius: 10px;
+@keyframes think-dot {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%      { opacity: 1; transform: scale(1.2); }
 }
 
-.conversation-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+@utility animate-orb-breathe {
+  animation: orb-breathe 3s ease-in-out infinite;
 }
-
-.conversation-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--text-muted);
-  font-size: 13px;
+@utility animate-orb-think {
+  animation: orb-think 2s ease-in-out infinite;
 }
-
-/* Messages */
-.message {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+@utility animate-orb-speak {
+  animation: orb-speak 1.5s ease-in-out infinite;
 }
-
-.message.user {
-  flex-direction: row-reverse;
+@utility animate-orb-ring {
+  animation: orb-ring 2.5s ease-out infinite;
 }
-
-.message-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  flex-shrink: 0;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
+@utility animate-wave-bar {
+  animation: wave-bar 0.8s ease-in-out infinite;
 }
-
-.message.user .message-avatar {
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  border-color: transparent;
-  color: #fff;
-}
-
-.message.assistant .message-avatar {
-  background: linear-gradient(135deg, #8B5A2B, #6B4226);
-  border-color: transparent;
-  color: #fff;
-}
-
-.message-bubble {
-  max-width: 80%;
-  padding: 8px 12px;
-  border-radius: 12px;
-  font-size: 13px;
-  line-height: 1.5;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-}
-
-.message.user .message-bubble {
-  background: rgba(198,124,78,0.1);
-  border-color: rgba(198,124,78,0.2);
-  border-radius: 12px 2px 12px 12px;
-}
-
-.message.assistant .message-bubble {
-  border-radius: 2px 12px 12px 12px;
-}
-
-.message.streaming .message-bubble::after {
-  content: '\25CB';
-  display: inline-block;
-  animation: blink 0.8s step-end infinite;
-  color: var(--accent);
-  margin-left: 2px;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* Card entries */
-.card-entry {
-  max-width: 340px;
-  margin: 4px 0 4px 34px;
-}
-
-/* Controls */
-.controls-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.error-banner {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--error);
-  background: rgba(248,81,73,0.08);
-  border: 1px solid rgba(248,81,73,0.2);
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-}
-
-.btn-start, .btn-stop {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 28px;
-  border: none;
-  border-radius: 24px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  letter-spacing: 0.2px;
-}
-
-.btn-start {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 4px 20px var(--accent-glow);
-}
-
-.btn-start:hover:not(:disabled) {
-  background: var(--accent-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 24px var(--accent-glow);
-}
-
-.btn-start:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-stop {
-  background: rgba(248,81,73,0.1);
-  color: var(--error);
-  border: 1px solid rgba(248,81,73,0.3);
-}
-
-.btn-stop:hover {
-  background: rgba(248,81,73,0.15);
-  border-color: var(--error);
-}
-
-/* Mobile H5 */
-@media (max-width: 640px) {
-  .voice-panel {
-    padding: 16px 12px 12px;
-    gap: 14px;
-  }
-
-  .ring-wrap {
-    width: 80px;
-    height: 80px;
-  }
-  .ring-1 { width: 80px; height: 80px; }
-  .ring-2 { width: 64px; height: 64px; }
-  .ring-3 { width: 50px; height: 50px; }
-  .orb { width: 48px; height: 48px; }
-  .orb svg { width: 22px; height: 22px; }
-
-  .status-section { gap: 8px; }
-  .status-label { font-size: 12px; }
-
-  .conversation-section {
-    max-width: 100%;
-    border-radius: var(--radius-md);
-  }
-
-  .conversation-body {
-    padding: 10px;
-    gap: 8px;
-  }
-
-  .card-entry {
-    max-width: 100%;
-    margin: 4px 0;
-  }
-
-  .message-bubble {
-    max-width: 85%;
-    font-size: 13px;
-    padding: 7px 10px;
-  }
-
-  .btn-start, .btn-stop {
-    padding: 10px 24px;
-    font-size: 13px;
-    width: 100%;
-    justify-content: center;
-    max-width: 300px;
-  }
+@utility animate-think-dot {
+  animation: think-dot 1s ease-in-out infinite;
 }
 </style>

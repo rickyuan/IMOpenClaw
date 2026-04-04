@@ -1,5 +1,5 @@
 <template>
-  <div id="app-root">
+  <div id="app-root" class="flex flex-col h-full bg-bg-base overflow-hidden">
     <TopNav v-model="mode" :userId="userId" @agent-changed="onAgentChanged" />
     <template v-if="ready">
       <ChatPanel
@@ -13,17 +13,22 @@
         :userId="userId"
       />
     </template>
-    <div v-else-if="initError" class="state-screen">
-      <div class="state-card error">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <p>{{ initError }}</p>
-        <button @click="init">Retry</button>
+    <div v-else-if="initError" class="flex-1 flex items-center justify-center px-6">
+      <div class="flex flex-col items-center gap-5 text-center max-w-[320px]">
+        <div class="w-14 h-14 rounded-2xl bg-error/10 flex items-center justify-center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-error">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <p class="text-sm text-text-secondary leading-relaxed">{{ initError }}</p>
+        <button
+          @click="init"
+          class="px-8 py-2.5 bg-white/10 text-white border border-white/10 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 hover:bg-white/15 active:scale-95"
+        >Retry</button>
       </div>
     </div>
-    <div v-else class="state-screen">
-      <div class="spinner" />
+    <div v-else class="flex-1 flex items-center justify-center">
+      <div class="w-10 h-10 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
     </div>
   </div>
 </template>
@@ -71,70 +76,3 @@ onUnmounted(() => {
   window.removeEventListener('beforeunload', onBeforeUnload);
 });
 </script>
-
-<style scoped>
-#app-root {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg-base);
-}
-
-.state-screen {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.spinner {
-  width: 36px;
-  height: 36px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.state-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 32px 40px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  max-width: 360px;
-  text-align: center;
-}
-
-.state-card.error {
-  color: var(--error);
-}
-
-.state-card p {
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.state-card button {
-  padding: 8px 24px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.state-card button:hover {
-  background: var(--accent-dark);
-}
-</style>
