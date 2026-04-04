@@ -101,8 +101,11 @@ router.post('/api/im/callback', callbackLimiter, async (req: Request, res: Respo
     // Send text reply
     await sendBotMessage(From_Account, displayReply);
 
-    // Card detection (unified via agent plugin)
-    const card = agent.detectCard(From_Account, rawReply);
+    // Card detection on DISPLAY text (not raw) — raw text may contain
+    // auto-continued content that was truncated by cleanDisplayText.
+    // Detecting on raw causes false positives (e.g., AI asks "What's your
+    // flight number?" but raw continues with flight details after the question).
+    const card = agent.detectCard(From_Account, displayReply);
     if (card) {
       await new Promise(r => setTimeout(r, 500));
       await sendBotCustomMessage(From_Account, card.type, card.data, card.description);
