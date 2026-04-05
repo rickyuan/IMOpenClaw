@@ -77,7 +77,7 @@
         </div>
 
         <!-- Messages: 16px margins (HIG), max-width (MD3), fluid text (web.dev) -->
-        <div v-else class="flex flex-col sm:max-w-[600px] sm:mx-auto" style="gap: 4px; padding: 16px 16px">
+        <div v-else class="flex flex-col sm:max-w-[600px] lg:max-w-[760px] xl:max-w-[880px] sm:mx-auto" style="gap: 4px; padding: 16px 16px">
           <template v-for="(entry, i) in entries" :key="i">
             <!-- Message -->
             <div v-if="entry.type === 'message'">
@@ -115,7 +115,7 @@
                   :style="{
                     fontSize: 'var(--text-base, 15px)',
                     lineHeight: '1.5',
-                    maxWidth: 'min(42ch, 75%)',
+                    maxWidth: windowWidth > 1024 ? 'min(60ch, 80%)' : 'min(42ch, 75%)',
                     padding: '10px 16px',
                     borderRadius: entry.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
                     background: entry.role === 'user' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)',
@@ -128,7 +128,7 @@
               </div>
             </div>
             <!-- Card: aligned with bot messages -->
-            <div v-else style="padding: 8px 0; margin-right: 16px">
+            <div v-else :style="{ padding: '8px 0', maxWidth: windowWidth > 1024 ? 'min(60ch, 80%)' : 'min(42ch, 85%)' }">
               <component
                 :is="getCardComponent(entry.type)"
                 v-bind="getCardProps(entry.type)"
@@ -208,6 +208,7 @@ const aiState = ref('idle');
 const errorMsg = ref('');
 const entries = ref<Entry[]>([]);
 const conversationArea = ref<HTMLElement | null>(null);
+const windowWidth = ref(window.innerWidth);
 const agentId = ref<'barista' | 'medical' | 'airport'>('barista');
 
 const shownCards = reactive({
@@ -576,9 +577,12 @@ async function loadAgent() {
   }
 }
 
+function onResize() { windowWidth.value = window.innerWidth; }
+
 onMounted(() => {
   window.addEventListener('voice-subtitle', onSubtitle);
   window.addEventListener('voice-state', onState);
+  window.addEventListener('resize', onResize);
   window.addEventListener('agent-changed', ((e: CustomEvent) => { agentId.value = e.detail as 'barista' | 'medical' | 'airport'; }) as EventListener);
   loadAgent();
 });
@@ -586,6 +590,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('voice-subtitle', onSubtitle);
   window.removeEventListener('voice-state', onState);
+  window.removeEventListener('resize', onResize);
   if (isActive.value) stopVoiceMode();
 });
 

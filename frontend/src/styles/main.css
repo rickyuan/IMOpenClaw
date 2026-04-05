@@ -327,10 +327,15 @@ html, body, #app {
   padding: 10px 16px !important;
 }
 
-/* Bubble max-width: let TUIKit's flex layout handle width naturally,
-   only cap at 75vw to prevent overly long lines on wide screens */
+/* Bubble max-width: cap width to prevent overly long lines */
 .TUIKit .message-body {
-  max-width: min(75ch, 75vw) !important;
+  max-width: min(65ch, 75vw) !important;
+}
+/* Desktop: wider bubbles since there's more space */
+@media (min-width: 1024px) {
+  .TUIKit .message-body {
+    max-width: min(75ch, 60vw) !important;
+  }
 }
 
 /* Text color inside bubbles — web.dev: 4.5:1 contrast ratio for body text */
