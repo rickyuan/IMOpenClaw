@@ -379,35 +379,60 @@ function generateBookingRef(): string {
   return 'DA-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-// ─── Card detection (barista) ───
+// ─── Card detection (barista) — aligned with backend logic ───
 function detectBaristaCard(text: string): 'menu' | 'order' | 'confirmation' | null {
   const lower = text.toLowerCase();
-  if (!shownCards.menu && lower.includes('menu') && (lower.includes('sent') || lower.includes('chat') || lower.includes('check'))) return 'menu';
-  if (!shownCards.order && (lower.includes('total') || lower.includes('applied')) && (lower.includes('$') || lower.includes('promo') || lower.includes('sent'))) return 'order';
-  if (!shownCards.confirmation && (lower.includes('all set') || lower.includes('confirmed') || lower.includes('will be ready'))) return 'confirmation';
+  // Confirmation: require order-specific context
+  if (!shownCards.confirmation && (
+    lower.includes('order is confirmed') || lower.includes('order confirmed') ||
+    lower.includes('on its way') || lower.includes('enjoy your coffee') || lower.includes('enjoy your drink') ||
+    (lower.includes('all set') && (lower.includes('order') || lower.includes('coffee') || lower.includes('delivery') || lower.includes('pickup'))) ||
+    lower.includes('has been placed') || lower.includes('order is placed') ||
+    lower.includes('set for delivery') || lower.includes('set for pickup') ||
+    (lower.includes('ready in') && lower.includes('minute'))
+  )) return 'confirmation';
+  // Order: delivery or pickup prompt
+  if (!shownCards.order && (lower.includes('delivery or pickup'))) return 'order';
+  // Menu: explicit menu mentions
+  if (!shownCards.menu && (
+    lower.includes('menu') ||
+    (lower.includes('which') && (lower.includes('coffee') || lower.includes('drink'))) ||
+    (lower.includes('what') && lower.includes('like') && (lower.includes('coffee') || lower.includes('drink')))
+  )) {
+    shownCards.menu = false; shownCards.order = false; shownCards.confirmation = false;
+    return 'menu';
+  }
   return null;
 }
 
-// ─── Card detection (airport) ───
+// ─── Card detection (airport) — aligned with backend logic ───
 function detectAirportCard(text: string): 'flight_status' | 'transport' | 'jewel' | 'dining' | null {
   const lower = text.toLowerCase();
-  const isFlight = lower.includes('flight details') || lower.includes('flight status') || lower.includes('your flight') ||
-    lower.includes('on time') || lower.includes('boarding') || lower.includes('gate c') || lower.includes('gate a') ||
-    lower.includes('gate d') || lower.includes('gate b') || lower.includes('sq 321') || lower.includes('cx 759') ||
-    lower.includes('tr 608') || lower.includes('qr 647') || lower.includes('terminal 3') || lower.includes('terminal 4');
+  // Flight: only explicit trigger phrases from system prompt
+  const isFlight = lower.includes('here are your flight details') ||
+    lower.includes('let me pull up your flight') ||
+    (lower.includes('flight') && lower.includes('gate') && lower.includes('terminal'));
   if (isFlight && !shownCards.flight) return 'flight_status';
 
-  const isTransport = lower.includes('transport options') || lower.includes('how to get') || lower.includes('getting to') ||
-    lower.includes('take the mrt') || lower.includes('mrt') && lower.includes('city') || lower.includes('bus 36') ||
-    lower.includes('grab') && lower.includes('taxi');
+  // Transport: explicit phrases + compound conditions
+  const isTransport = lower.includes('here are your transport options') ||
+    lower.includes("here's how to get there") || lower.includes('transport options') ||
+    (lower.includes('take the mrt') && (lower.includes('min') || lower.includes('station'))) ||
+    (lower.includes('mrt') && lower.includes('grab') && lower.includes('min'));
   if (isTransport && !shownCards.transport) return 'transport';
 
-  const isJewel = lower.includes('jewel changi') || lower.includes('rain vortex') || lower.includes('canopy park') ||
-    lower.includes("jewel has to offer") || lower.includes('show you jewel');
+  // Jewel: explicit phrases + landmarks
+  const isJewel = lower.includes("here's what jewel has to offer") ||
+    lower.includes('let me show you jewel') ||
+    (lower.includes('jewel changi') && (lower.includes('rain vortex') || lower.includes('canopy') || lower.includes('shopping') || lower.includes('dining'))) ||
+    lower.includes('rain vortex');
   if (isJewel && !shownCards.jewel) return 'jewel';
 
-  const isDining = lower.includes('dining options') || lower.includes('great restaurants') || lower.includes('places to eat') ||
-    lower.includes('din tai fung') || lower.includes('shake shack') || lower.includes('food options');
+  // Dining: explicit phrases + compound conditions
+  const isDining = lower.includes('here are some dining options') ||
+    lower.includes('here are some great restaurants') || lower.includes('here are great places to eat') ||
+    (lower.includes('dining options') && (lower.includes('terminal') || lower.includes('jewel'))) ||
+    (lower.includes('restaurant') && lower.includes('terminal') && lower.includes('recommend'));
   if (isDining && !shownCards.dining) return 'dining';
 
   return null;
@@ -422,15 +447,39 @@ function extractFlightFromText(allText: string) {
       return;
     }
   }
-  Object.assign(flightData, DEMO_FLIGHTS[0]);
+  // Only default to first flight if no specific flight was mentioned —
+  // this prevents showing SQ 321 when user hasn't mentioned any flight yet
 }
 
-// ─── Card detection (medical) ───
+// ─── Card detection (medical) — aligned with backend logic ───
 function detectMedicalCard(text: string): 'service_menu' | 'doctor_list' | 'appointment' | null {
   const lower = text.toLowerCase();
-  if (!shownCards.appointment && (lower.includes('appointment is confirmed') || lower.includes('booking is confirmed') || lower.includes('you\'re all set') || lower.includes('see you on'))) return 'appointment';
-  if (!shownCards.doctorList && (lower.includes('available doctors') || lower.includes('here are our') || lower.includes('recommend dr.') || lower.includes('i\'d recommend dr.'))) return 'doctor_list';
-  if (!shownCards.serviceMenu && (lower.includes('how can i help') || lower.includes('what do you need') || lower.includes('what would you like'))) return 'service_menu';
+  // Appointment: require explicit confirmation phrases
+  if (!shownCards.appointment && (
+    lower.includes('appointment is confirmed') || lower.includes('booking is confirmed') ||
+    lower.includes('appointment has been booked') || lower.includes('successfully booked') ||
+    lower.includes('booked your appointment') || lower.includes('confirmed your appointment') ||
+    (lower.includes('see you on') && lower.includes('dr.'))
+  )) return 'appointment';
+  // Doctor list: require "available doctors" or doctor recommendations
+  if (!shownCards.doctorList && (
+    lower.includes('available doctors') || lower.includes('here are our available') ||
+    lower.includes('here are the doctors') ||
+    lower.includes('recommend dr.') || lower.includes('i\'d recommend dr.') ||
+    lower.includes('i recommend dr.') || lower.includes('suggest dr.') ||
+    (lower.includes('dr.') && lower.includes('available') && lower.includes('specializ'))
+  )) return 'doctor_list';
+  // Service menu: require Doctor Anywhere context
+  if (!shownCards.serviceMenu && (
+    lower.includes('welcome to doctor anywhere') ||
+    (lower.includes('our services') && (lower.includes('teleconsult') || lower.includes('screening') || lower.includes('gp'))) ||
+    (lower.includes('how can i help') && (lower.includes('doctor') || lower.includes('consult') || lower.includes('booking') || lower.includes('appointment'))) ||
+    lower.includes('see a gp') ||
+    (lower.includes('teleconsult') && lower.includes('screening'))
+  )) {
+    shownCards.serviceMenu = false; shownCards.doctorList = false; shownCards.appointment = false;
+    return 'service_menu';
+  }
   return null;
 }
 
