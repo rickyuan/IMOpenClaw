@@ -64,71 +64,84 @@ router.post('/api/im/callback', callbackLimiter, async (req: Request, res: Respo
     return;
   }
 
-  // IMPORTANT: On Vercel serverless, the function freezes after res is sent.
-  // Must complete ALL async work BEFORE responding.
-  try {
-    // On Vercel serverless, in-memory state is lost between invocations.
-    // Read agentId/modelId from CloudCustomData attached by the frontend.
-    let agentId = getUserAgent(From_Account, 'barista');
-    let modelId = getUserModel(From_Account, '1');
+  // CRITICAL: Respond to TIM immediately to prevent callback retries.
+  // TIM retries if it doesn't get a 200 within ~2 seconds, but LLM calls
+  // take 3-10 seconds. Retries cause duplicate messages and session corruption.
+  // We use waitUntil() to continue processing after the response is sent.
+  res.json(IM_OK);
+
+  // Capture request data before Express cleans up
+  const reqBody = { ...req.body };
+
+  // Process the message asynchronously
+  const processMessage = async () => {
     try {
-      const cloudData = req.body.CloudCustomData;
-      log(`[CloudCustomData] raw=${cloudData || '(empty)'}`);
-      if (cloudData) {
-        const parsed = JSON.parse(cloudData);
-        if (parsed.agentId) agentId = parsed.agentId;
-        if (parsed.modelId) modelId = parsed.modelId;
-        // Sync to in-memory state (helps within same warm instance)
-        setUserAgent(From_Account, agentId);
-        if (parsed.modelId) setUserModel(From_Account, modelId);
-      }
-    } catch {}
-    const agent = getAgent(agentId);
+      // On Vercel serverless, in-memory state is lost between invocations.
+      // Read agentId/modelId from CloudCustomData attached by the frontend.
+      let agentId = getUserAgent(From_Account, 'barista');
+      let modelId = getUserModel(From_Account, '1');
+      try {
+        const cloudData = reqBody.CloudCustomData;
+        log(`[CloudCustomData] raw=${cloudData || '(empty)'}`);
+        if (cloudData) {
+          const parsed = JSON.parse(cloudData);
+          if (parsed.agentId) agentId = parsed.agentId;
+          if (parsed.modelId) modelId = parsed.modelId;
+          setUserAgent(From_Account, agentId);
+          if (parsed.modelId) setUserModel(From_Account, modelId);
+        }
+      } catch {}
+      const agent = getAgent(agentId);
 
-    log(`[${new Date().toISOString()}] From: ${From_Account}, Agent: ${agentId}, Model: ${modelId}, Msg: ${userMessage}`);
+      log(`[${new Date().toISOString()}] From: ${From_Account}, Agent: ${agentId}, Model: ${modelId}, Msg: ${userMessage}`);
 
-    // Track user message
-    agent.trackMessage(From_Account, 'user', userMessage);
+      // Track user message
+      agent.trackMessage(From_Account, 'user', userMessage);
 
-    // Call LLM
-    const { raw: rawReply, display: displayReply } = await callOpenClaw(userMessage, From_Account);
-    log(`  -> Raw: ${rawReply.substring(0, 200)}`);
-    log(`  -> Display: ${displayReply.substring(0, 200)}`);
+      // Call LLM
+      const { raw: rawReply, display: displayReply } = await callOpenClaw(userMessage, From_Account);
+      log(`  -> Raw: ${rawReply.substring(0, 200)}`);
+      log(`  -> Display: ${displayReply.substring(0, 200)}`);
 
-    // Track AI reply
-    agent.trackMessage(From_Account, 'assistant', rawReply);
+      // Track AI reply
+      agent.trackMessage(From_Account, 'assistant', rawReply);
 
-    // Send text reply
-    await sendBotMessage(From_Account, displayReply);
+      // Send text reply
+      await sendBotMessage(From_Account, displayReply);
 
-    // Card detection on DISPLAY text (not raw) — raw text may contain
-    // auto-continued content that was truncated by cleanDisplayText.
-    // Detecting on raw causes false positives (e.g., AI asks "What's your
-    // flight number?" but raw continues with flight details after the question).
-    const card = agent.detectCard(From_Account, displayReply);
-    if (card) {
-      await new Promise(r => setTimeout(r, 500));
-      await sendBotCustomMessage(From_Account, card.type, card.data, card.description);
-      log(`  -> Card: ${card.type}`);
+      // Card detection on DISPLAY text (not raw)
+      const card = agent.detectCard(From_Account, displayReply);
+      if (card) {
+        await new Promise(r => setTimeout(r, 500));
+        await sendBotCustomMessage(From_Account, card.type, card.data, card.description);
+        log(`  -> Card: ${card.type}`);
 
-      // Medical agent: auto-sync appointment to Google Calendar
-      if (card.type === 'appointment_card' && isUserConnected(From_Account)) {
-        try {
-          const eventLink = await createCalendarEvent(From_Account, card.data as any);
-          if (eventLink) {
-            await sendBotMessage(From_Account, 'Your appointment has been added to your Google Calendar automatically.');
-            log(`  -> Google Calendar: event created`);
+        // Medical agent: auto-sync appointment to Google Calendar
+        if (card.type === 'appointment_card' && isUserConnected(From_Account)) {
+          try {
+            const eventLink = await createCalendarEvent(From_Account, card.data as any);
+            if (eventLink) {
+              await sendBotMessage(From_Account, 'Your appointment has been added to your Google Calendar automatically.');
+              log(`  -> Google Calendar: event created`);
+            }
+          } catch (err) {
+            console.error('[GoogleCal] Auto-sync failed:', err);
           }
-        } catch (err) {
-          console.error('[GoogleCal] Auto-sync failed:', err);
         }
       }
+    } catch (error) {
+      console.error('Error processing IM callback:', error);
     }
-  } catch (error) {
-    console.error('Error processing IM callback:', error);
-  }
+  };
 
-  res.json(IM_OK);
+  // Use waitUntil if available (Vercel), otherwise just fire-and-forget
+  try {
+    const { waitUntil } = require('@vercel/functions');
+    waitUntil(processMessage());
+  } catch {
+    // Not on Vercel (local dev) — just run the promise
+    processMessage().catch(err => console.error('Background processing error:', err));
+  }
 });
 
 export default router;
