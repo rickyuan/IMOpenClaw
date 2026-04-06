@@ -1,11 +1,19 @@
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
+async function parseJSON<T>(response: Response): Promise<T> {
+  try {
+    return await response.json();
+  } catch {
+    throw new Error('Invalid response from server');
+  }
+}
+
 export async function fetchUserSig(userId: string): Promise<{ userSig: string; sdkAppId: number }> {
   const response = await fetch(`${BACKEND_URL}/api/auth/usersig?userId=${encodeURIComponent(userId)}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch userSig: ${response.statusText}`);
   }
-  return response.json();
+  return parseJSON(response);
 }
 
 export interface ModelInfo {

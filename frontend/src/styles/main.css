@@ -329,12 +329,12 @@ html, body, #app {
 
 /* Bubble max-width: cap width to prevent overly long lines */
 .TUIKit .message-body {
-  max-width: min(65ch, 75vw) !important;
+  max-width: min(65ch, 80vw) !important;
 }
 /* Desktop: wider bubbles since there's more space */
 @media (min-width: 1024px) {
   .TUIKit .message-body {
-    max-width: min(75ch, 60vw) !important;
+    max-width: 75vw !important;
   }
 }
 

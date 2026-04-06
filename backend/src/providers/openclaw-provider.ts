@@ -55,14 +55,29 @@ export class OpenClawProvider implements LLMProvider {
       ],
     };
 
-    const response = await fetch(this.apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
+    let response: Response;
+    try {
+      response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') {
+        console.error('[OpenClaw] Request timed out after 15s');
+        return { raw: '', display: 'Sorry, the request timed out. Please try again.' };
+      }
+      console.error('[OpenClaw] Network error:', err.message);
+      return { raw: '', display: 'Sorry, I could not connect. Please try again.' };
+    }
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');

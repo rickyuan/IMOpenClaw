@@ -34,10 +34,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, defineAsyncComponent, onMounted, onUnmounted } from 'vue';
 import TopNav from './components/TopNav.vue';
 import ChatPanel from './components/ChatPanel.vue';
-import VoicePanel from './components/VoicePanel.vue';
+const VoicePanel = defineAsyncComponent(() => import('./components/VoicePanel.vue'));
 import { fetchUserSig } from './services/api';
 import { initChatSync } from './services/chat-sync';
 import { stopVoiceMode } from './services/trtc';

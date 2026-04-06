@@ -23,7 +23,10 @@ import { errorHandler } from './middleware/error-handler';
 
 const app = express();
 
-app.use(cors());
+// Same-origin on Vercel (frontend + API share domain). CORS only needed for local dev.
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || true,
+}));
 app.use(express.json());
 
 // Routes

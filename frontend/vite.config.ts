@@ -10,6 +10,17 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'trtc': ['trtc-sdk-v5'],
+          'vendor': ['vue'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1500,
+  },
   server: {
     proxy: {
       '/api': {

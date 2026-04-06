@@ -13,25 +13,38 @@ async function sendIM(toUserId: string, msgBody: any[]): Promise<void> {
   const botUserId = process.env.IM_BOT_USERID!;
   const url = buildIMUrl();
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      SyncOtherMachine: 1,
-      From_Account: botUserId,
-      To_Account: toUserId,
-      MsgRandom: Math.floor(Math.random() * 4294967295),
-      MsgBody: msgBody,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        SyncOtherMachine: 1,
+        From_Account: botUserId,
+        To_Account: toUserId,
+        MsgRandom: Math.floor(Math.random() * 4294967295),
+        MsgBody: msgBody,
+      }),
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    console.error(`Chat API error: ${response.status} ${response.statusText}`);
-  } else {
-    const result: any = await response.json();
-    if (result.ErrorCode !== 0) {
-      console.error(`Chat API error: ${result.ErrorCode} ${result.ErrorInfo}`);
+    if (!response.ok) {
+      console.error(`Chat API error: ${response.status} ${response.statusText}`);
+    } else {
+      const result: any = await response.json();
+      if (result.ErrorCode !== 0) {
+        console.error(`Chat API error: ${result.ErrorCode} ${result.ErrorInfo}`);
+      }
     }
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      console.error('[Chat API] Request timed out after 10s');
+    } else {
+      console.error('[Chat API] Network error:', err.message);
+    }
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

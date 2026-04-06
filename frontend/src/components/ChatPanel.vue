@@ -45,6 +45,7 @@ const botUserId = import.meta.env.VITE_BOT_USERID || 'openclaw_bot';
 const conversationID = computed(() => `C2C${botUserId}`);
 
 let switched = false;
+const pendingTimers: ReturnType<typeof setTimeout>[] = [];
 
 const switchToBot = () => {
   if (switched) return;
@@ -54,7 +55,10 @@ const switchToBot = () => {
 };
 
 const onConvListUpdate = (list: any[]) => {
-  if (list !== undefined) setTimeout(switchToBot, 100);
+  if (list !== undefined) {
+    const t = setTimeout(switchToBot, 100);
+    pendingTimers.push(t);
+  }
 };
 
 onMounted(() => {
@@ -63,11 +67,16 @@ onMounted(() => {
     return;
   }
   TUIStore.watch(StoreName.CONV, { conversationList: onConvListUpdate });
-  [3000, 5000, 8000].forEach(d => setTimeout(switchToBot, d));
+  [3000, 5000, 8000].forEach(d => {
+    const t = setTimeout(switchToBot, d);
+    pendingTimers.push(t);
+  });
 });
 
 onUnmounted(() => {
   TUIStore.unwatch(StoreName.CONV, { conversationList: onConvListUpdate });
+  pendingTimers.forEach(t => clearTimeout(t));
+  pendingTimers.length = 0;
 });
 
 function retry() {

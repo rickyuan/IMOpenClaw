@@ -25,7 +25,7 @@
               :style="{ background: orbBackground }"
             >
               <div v-if="isActive && (aiState === 'listening' || aiState === 'speaking')" class="flex items-center gap-[2px]">
-                <div v-for="n in 3" :key="n" class="w-[2px] bg-white/90 rounded-full animate-wave-bar" :style="{ height: `${6 + Math.random() * 8}px`, animationDelay: `${n * 0.12}s` }" />
+                <div v-for="n in 3" :key="n" class="w-[2px] bg-white/90 rounded-full animate-wave-bar" :style="{ height: waveBarHeights[n - 1], animationDelay: `${n * 0.12}s` }" />
               </div>
               <div v-else-if="isActive && aiState === 'thinking'" class="flex items-center gap-[3px]">
                 <div v-for="n in 3" :key="n" class="w-1 h-1 bg-white/70 rounded-full animate-think-dot" :style="{ animationDelay: `${n * 0.15}s` }" />
@@ -56,7 +56,7 @@
         class="flex-1 min-h-0 overflow-y-auto custom-scrollbar"
       >
         <!-- Empty state: centered, generous padding, fluid text (web.dev) -->
-        <div v-if="entries.length === 0 && !isActive" class="flex flex-col items-center justify-center h-full" style="padding: 0 32px">
+        <div v-if="entries.length === 0 && !isActive" class="flex flex-col items-center justify-center h-full" style="padding: 0 48px">
           <div
             class="w-20 h-20 rounded-[22px] flex items-center justify-center mb-6 shadow-lg"
             :style="{ background: orbBackground }"
@@ -69,7 +69,7 @@
           </div>
           <p class="font-semibold text-white/70 text-center mb-1.5" style="font-size: var(--text-lg, 17px)">{{ botName }}</p>
           <!-- web.dev: max-inline-size with ch for ideal line length (45-75 chars) -->
-          <p class="text-white/35 text-center leading-relaxed" style="font-size: var(--text-sm, 13px); max-inline-size: 36ch">{{
+          <p class="text-white/35 text-center leading-relaxed" :style="{ fontSize: 'var(--text-sm, 13px)', maxInlineSize: windowWidth > 1024 ? '48ch' : '36ch' }">{{
             agentId === 'medical' ? 'Your AI healthcare assistant. Tap below to start a voice consultation.' :
             agentId === 'airport' ? 'Your Changi Airport guide. Ask about flights, transport, or dining.' :
             'Your AI barista. Start a voice order and Bella will help you pick a drink.'
@@ -77,7 +77,7 @@
         </div>
 
         <!-- Messages: 16px margins (HIG), max-width (MD3), fluid text (web.dev) -->
-        <div v-else class="flex flex-col sm:max-w-[600px] lg:max-w-[760px] xl:max-w-[880px] sm:mx-auto" style="gap: 4px; padding: 16px 16px">
+        <div v-else class="flex flex-col" :style="{ gap: '4px', padding: '16px 16px', maxWidth: conversationMaxWidth, margin: windowWidth >= 640 ? '0 auto' : undefined }">
           <template v-for="(entry, i) in entries" :key="i">
             <!-- Message -->
             <div v-if="entry.type === 'message'">
@@ -115,7 +115,7 @@
                   :style="{
                     fontSize: 'var(--text-base, 15px)',
                     lineHeight: '1.5',
-                    maxWidth: windowWidth > 1024 ? 'min(60ch, 80%)' : 'min(42ch, 75%)',
+                    maxWidth: windowWidth > 1024 ? '85%' : 'min(42ch, 80%)',
                     padding: '10px 16px',
                     borderRadius: entry.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
                     background: entry.role === 'user' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)',
@@ -128,7 +128,7 @@
               </div>
             </div>
             <!-- Card: aligned with bot messages -->
-            <div v-else :style="{ padding: '8px 0', maxWidth: windowWidth > 1024 ? 'min(60ch, 80%)' : 'min(42ch, 85%)' }">
+            <div v-else :style="{ padding: '8px 0', maxWidth: windowWidth > 1024 ? '85%' : 'min(42ch, 90%)' }">
               <component
                 :is="getCardComponent(entry.type)"
                 v-bind="getCardProps(entry.type)"
@@ -155,7 +155,7 @@
           v-if="!isActive"
           @click="start"
           :disabled="isLoading"
-          class="flex items-center justify-center gap-2.5 w-full max-w-[340px] h-[52px] rounded-2xl font-semibold text-white shadow-lg transition-all duration-200 active:scale-[0.97] disabled:opacity-40"
+          class="flex items-center justify-center gap-2.5 w-full max-w-[340px] lg:max-w-[420px] h-[52px] rounded-2xl font-semibold text-white shadow-lg transition-all duration-200 active:scale-[0.97] disabled:opacity-40"
           :style="{ background: orbBackground, fontSize: 'var(--text-base, 15px)' }"
         >
           <svg v-if="!isLoading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -210,6 +210,10 @@ const entries = ref<Entry[]>([]);
 const conversationArea = ref<HTMLElement | null>(null);
 const windowWidth = ref(window.innerWidth);
 const agentId = ref<'barista' | 'medical' | 'airport'>('barista');
+let welcomeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Pre-computed wave bar heights (avoid Math.random in template)
+const waveBarHeights = [10, 12, 8].map(h => `${h}px`);
 
 const shownCards = reactive({
   menu: false, order: false, confirmation: false,
@@ -221,6 +225,15 @@ const conversationText = ref<string[]>([]);
 const orbSize = computed(() => (aiState.value === 'speaking' ? 'lg' : 'md'));
 
 // ─── Theme-aware computed styles ───
+// Desktop-responsive conversation column width (percentage-based for natural scaling)
+const conversationMaxWidth = computed(() => {
+  if (windowWidth.value >= 1536) return '82%';
+  if (windowWidth.value >= 1280) return '84%';
+  if (windowWidth.value >= 1024) return '86%';
+  if (windowWidth.value >= 640) return '92%';
+  return 'none';
+});
+
 const orbBackground = computed(() => {
   if (agentId.value === 'medical') return 'linear-gradient(135deg, #2E86DE, #1B5E9E)';
   if (agentId.value === 'airport') return 'linear-gradient(135deg, #7C3AED, #0EA5E9)';
@@ -579,11 +592,15 @@ async function loadAgent() {
 
 function onResize() { windowWidth.value = window.innerWidth; }
 
+function onAgentChanged(e: Event) {
+  agentId.value = (e as CustomEvent).detail as 'barista' | 'medical' | 'airport';
+}
+
 onMounted(() => {
   window.addEventListener('voice-subtitle', onSubtitle);
   window.addEventListener('voice-state', onState);
   window.addEventListener('resize', onResize);
-  window.addEventListener('agent-changed', ((e: CustomEvent) => { agentId.value = e.detail as 'barista' | 'medical' | 'airport'; }) as EventListener);
+  window.addEventListener('agent-changed', onAgentChanged);
   loadAgent();
 });
 
@@ -591,6 +608,8 @@ onUnmounted(() => {
   window.removeEventListener('voice-subtitle', onSubtitle);
   window.removeEventListener('voice-state', onState);
   window.removeEventListener('resize', onResize);
+  window.removeEventListener('agent-changed', onAgentChanged);
+  if (welcomeTimeout) { clearTimeout(welcomeTimeout); welcomeTimeout = null; }
   if (isActive.value) stopVoiceMode();
 });
 
@@ -623,7 +642,10 @@ async function start() {
     aiState.value = 'idle';
 
     const welcome = welcomeMessages[agentId.value];
-    setTimeout(() => {
+    if (welcomeTimeout) clearTimeout(welcomeTimeout);
+    welcomeTimeout = setTimeout(() => {
+      welcomeTimeout = null;
+      if (!isActive.value) return; // Component may have stopped
       if (!entries.value.some(e => e.type === 'message' && e.role === 'assistant')) {
         entries.value.push({ type: 'message', text: welcome.text, role: 'assistant', active: false });
       }
@@ -646,7 +668,8 @@ async function start() {
 }
 
 async function stop() {
-  await stopVoiceMode();
+  if (welcomeTimeout) { clearTimeout(welcomeTimeout); welcomeTimeout = null; }
+  try { await stopVoiceMode(); } catch (e) { console.warn('Stop voice error:', e); }
   isActive.value = false;
   aiState.value = 'idle';
 }
